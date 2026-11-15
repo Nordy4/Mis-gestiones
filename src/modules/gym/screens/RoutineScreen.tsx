@@ -151,6 +151,9 @@ export function RoutineScreen() {
       backTo={gymPaths.home}
       actions={
         <>
+          <IconButton label="Añadir sección" onClick={() => setCreatingSection(true)}>
+            <FolderPlus className="size-4" />
+          </IconButton>
           <IconButton label="Renombrar rutina" onClick={() => setRenaming(true)}>
             <Pencil className="size-4" />
           </IconButton>
@@ -175,6 +178,9 @@ export function RoutineScreen() {
                 <h2 className="min-w-0 flex-1 truncate text-sm font-semibold tracking-wide text-muted uppercase">
                   {section.name}
                 </h2>
+                <IconButton label={`Añadir ejercicio en ${section.name}`} onClick={() => setAddingIn(section.id)}>
+                  <Plus className="size-4" />
+                </IconButton>
                 <IconButton label={`Editar sección ${section.name}`} onClick={() => setEditingSectionId(section.id)}>
                   <Pencil className="size-4" />
                 </IconButton>
@@ -190,28 +196,21 @@ export function RoutineScreen() {
                 />
               ))}
             </ul>
-            {section && (
-              <Button
-                variant="ghost"
-                block
-                className="mt-2 border border-dashed border-border text-muted"
-                onClick={() => setAddingIn(section.id)}
-              >
-                <Plus className="size-4" /> Ejercicio en {section.name}
-              </Button>
-            )}
           </section>
         ))}
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-2">
-        <Button variant="secondary" onClick={() => setAddingIn(null)}>
-          <Plus className="size-5" /> Ejercicio
+      {/* Sin secciones no hay icono "+" donde añadir: se deja este botón. */}
+      {sections.length === 0 && (
+        <Button
+          variant="ghost"
+          block
+          className="mt-4 border border-dashed border-border text-muted"
+          onClick={() => setAddingIn(null)}
+        >
+          <Plus className="size-4" /> Añadir ejercicio
         </Button>
-        <Button variant="secondary" onClick={() => setCreatingSection(true)}>
-          <FolderPlus className="size-5" /> Sección
-        </Button>
-      </div>
+      )}
 
       <RoutineNameSheet
         open={renaming}

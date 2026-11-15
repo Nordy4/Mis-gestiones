@@ -117,6 +117,9 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
   Se puede descartar. `ActiveWorkoutBanner` lo muestra en las pestañas.
 - **Calendario** (`CalendarScreen`): mes con los días entrenados, total del mes, y detalle del día
   (rutina, hora de inicio, duración, borrar). Usa `useRoutineNames` para incluir rutinas borradas.
+- Pantalla de rutina: en la cabecera, iconos añadir sección (FolderPlus) · renombrar · borrar
+  rutina. Cada sección tiene iconos "+" (añadir ejercicio en esa sección) y lápiz (editar). Solo si
+  la rutina no tiene secciones aparece el botón "Añadir ejercicio" al final.
 - Secciones: los ejercicios sin sección van arriba; luego cada sección por `order`
   (`lib/grouping.ts`). Borrar una sección deja sus ejercicios sin sección.
 - Evolución (`ExerciseStatsScreen`): peso actual y récord por persona, gráfica del historial de
