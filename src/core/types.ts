@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import type { RouteObject } from 'react-router';
+import type { Transaction } from 'dexie';
 
 /** Parte de datos de un módulo: sus tablas y cómo exportarlas/importarlas. */
 export interface ModuleData {
@@ -14,6 +15,12 @@ export interface ModuleData {
   importData(data: unknown): Promise<void>;
   /** Datos iniciales. Se ejecuta una sola vez, la primera vez que se abre la app. */
   seed?(): Promise<void>;
+  /**
+   * Migración de datos. Se ejecuta dentro de la transacción de Dexie cada vez que la BD
+   * existente sube de versión (no en instalaciones nuevas). DEBE ser idempotente:
+   * comprobar el formato de los datos en vez de suponer de qué versión vienen.
+   */
+  upgrade?(tx: Transaction): Promise<void>;
 }
 
 /** Definición de un módulo del hub. Se registra en src/modules/registry.ts. */

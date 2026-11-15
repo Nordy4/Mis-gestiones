@@ -7,6 +7,8 @@ import { EmptyState } from '@/core/components/EmptyState';
 import { formatDateShort } from '@/core/lib/format';
 import { gymRepo, useLastWorkoutDates, useRoutines } from '../data/hooks';
 import { RoutineNameSheet } from '../components/RoutineNameSheet';
+import { GymTabs } from '../components/GymTabs';
+import { ActiveWorkoutBanner } from '../components/ActiveWorkoutBanner';
 import { gymPaths } from '../paths';
 
 export function RoutinesScreen() {
@@ -15,16 +17,9 @@ export function RoutinesScreen() {
   const [creating, setCreating] = useState(false);
 
   return (
-    <Screen
-      title="Gym"
-      subtitle="Elige una rutina"
-      backTo="/"
-      footer={
-        <Button size="lg" block variant="secondary" onClick={() => setCreating(true)}>
-          <Plus className="size-5" /> Nueva rutina
-        </Button>
-      }
-    >
+    <Screen title="Gym" subtitle="Elige una rutina" backTo="/" footer={<GymTabs />}>
+      <ActiveWorkoutBanner />
+
       {routines && routines.length === 0 && (
         <EmptyState icon={ListPlus} title="No tienes rutinas">
           Crea la primera con el botón de abajo.
@@ -51,6 +46,14 @@ export function RoutinesScreen() {
           );
         })}
       </ul>
+      <Button
+        variant="ghost"
+        block
+        className="mt-3 border border-dashed border-border text-muted"
+        onClick={() => setCreating(true)}
+      >
+        <Plus className="size-5" /> Nueva rutina
+      </Button>
 
       <RoutineNameSheet
         open={creating}

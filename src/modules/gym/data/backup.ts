@@ -1,5 +1,6 @@
 import { gymRepo } from './hooks';
-import type { GymExport } from './types';
+import type { AnyGymData } from './normalize';
+import { upgradeGymData } from './dexieRepository';
 
 function assertArray(value: unknown, name: string): unknown[] {
   if (!Array.isArray(value)) throw new Error(`Copia de Gym no válida: falta "${name}"`);
@@ -11,17 +12,22 @@ function assertArray(value: unknown, name: string): unknown[] {
   return value;
 }
 
-/** Comprobación mínima del formato antes de sustituir los datos. */
-export function parseGymExport(data: unknown): GymExport {
+const optionalArray = (value: unknown, name: string) => (value === undefined ? undefined : assertArray(value, name));
+
+/**
+ * Comprobación mínima del formato antes de sustituir los datos.
+ * Acepta copias de cualquier versión (con `sets` antiguos o con `weightLog`).
+ */
+export function parseGymExport(data: unknown): AnyGymData {
   if (!data || typeof data !== 'object') throw new Error('Copia de Gym no válida');
   const d = data as Record<string, unknown>;
   return {
-    routines: assertArray(d.routines, 'routines') as GymExport['routines'],
-    // Las copias anteriores a las secciones no traen este campo.
-    sections: (d.sections === undefined ? [] : assertArray(d.sections, 'sections')) as GymExport['sections'],
-    exercises: assertArray(d.exercises, 'exercises') as GymExport['exercises'],
-    workouts: assertArray(d.workouts, 'workouts') as GymExport['workouts'],
-    sets: assertArray(d.sets, 'sets') as GymExport['sets'],
+    routines: assertArray(d.routines, 'routines') as AnyGymData['routines'],
+    sections: optionalArray(d.sections, 'sections') as AnyGymData['sections'],
+    exercises: assertArray(d.exercises, 'exercises') as AnyGymData['exercises'],
+    workouts: assertArray(d.workouts, 'workouts') as AnyGymData['workouts'],
+    weightLog: optionalArray(d.weightLog, 'weightLog') as AnyGymData['weightLog'],
+    sets: optionalArray(d.sets, 'sets') as AnyGymData['sets'],
   };
 }
 
@@ -29,4 +35,5 @@ export const gymData = {
   exportData: () => gymRepo.exportAll(),
   importData: (data: unknown) => gymRepo.importAll(parseGymExport(data)),
   seed: () => gymRepo.seed(),
+  upgrade: upgradeGymData,
 };

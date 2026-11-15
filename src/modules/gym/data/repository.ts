@@ -1,14 +1,13 @@
 import type {
   Exercise,
   ExerciseInput,
-  ExerciseSession,
   GymExport,
-  LastWeights,
   Routine,
   Section,
+  WeightLogEntry,
   Workout,
-  WorkoutSet,
 } from './types';
+import type { AnyGymData } from './normalize';
 
 /**
  * Contrato de acceso a datos del módulo Gym.
@@ -17,7 +16,8 @@ import type {
  */
 export interface GymRepository {
   // Rutinas
-  listRoutines(): Promise<Routine[]>;
+  /** Rutinas visibles; con `includeArchived` también las borradas (para el calendario). */
+  listRoutines(includeArchived?: boolean): Promise<Routine[]>;
   getRoutine(id: string): Promise<Routine | undefined>;
   createRoutine(name: string): Promise<Routine>;
   renameRoutine(id: string, name: string): Promise<void>;
@@ -33,41 +33,37 @@ export interface GymRepository {
   /** Borra la sección; sus ejercicios pasan a "sin sección". */
   archiveSection(id: string): Promise<void>;
 
-  // Ejercicios
+  // Ejercicios y pesos
   listExercises(routineId: string): Promise<Exercise[]>;
   getExercise(id: string): Promise<Exercise | undefined>;
   addExercise(routineId: string, input: ExerciseInput): Promise<Exercise>;
+  /** Actualiza el ejercicio; si cambian los pesos, los apunta en el historial de hoy. */
   updateExercise(id: string, input: ExerciseInput): Promise<void>;
+  /** Cambia solo los pesos actuales y los apunta en el historial de hoy. */
+  setWeights(id: string, weight: number | null, partnerWeight: number | null): Promise<void>;
   archiveExercise(id: string): Promise<void>;
+  /** Historial de pesos de un ejercicio, del más antiguo al más reciente. */
+  weightHistory(exerciseId: string): Promise<WeightLogEntry[]>;
 
-  // Entrenamientos
-  /** Entrenamiento de esa rutina en ese día, si existe. */
-  findWorkout(routineId: string, date: string): Promise<Workout | undefined>;
-  getOrCreateWorkout(routineId: string, date: string): Promise<Workout>;
-  /** Marca el entrenamiento como terminado (o lo borra si no tiene series). */
-  finishWorkout(id: string): Promise<void>;
-  /** Fecha del último entrenamiento (con series) de cada rutina. */
+  // Entrenamientos cronometrados
+  /** El entrenamiento en curso (hay como mucho uno). */
+  getActiveWorkout(): Promise<Workout | undefined>;
+  /** Empieza a cronometrar. Falla si ya hay otro entrenamiento en curso. */
+  startWorkout(routineId: string): Promise<Workout>;
+  pauseWorkout(id: string): Promise<void>;
+  resumeWorkout(id: string): Promise<void>;
+  /** Para el cronómetro y guarda la duración. Devuelve el entreno terminado. */
+  finishWorkout(id: string): Promise<Workout>;
+  /** Borra un entrenamiento (en curso o ya registrado). */
+  deleteWorkout(id: string): Promise<void>;
+  /** Entrenamientos terminados con fecha entre `from` y `to` (YYYY-MM-DD, ambos incluidos). */
+  listWorkouts(from: string, to: string): Promise<Workout[]>;
+  /** Fecha del último entrenamiento terminado de cada rutina. */
   lastWorkoutDates(): Promise<Record<string, string>>;
-
-  // Series
-  listSets(workoutId: string): Promise<WorkoutSet[]>;
-  addSet(
-    workoutId: string,
-    exerciseId: string,
-    weight: number | null,
-    partnerWeight: number | null,
-    reps: number,
-  ): Promise<WorkoutSet>;
-  deleteSet(id: string): Promise<void>;
-  /** Últimos pesos usados (míos y de la pareja), o los iniciales del ejercicio. */
-  lastWeights(exerciseId: string): Promise<LastWeights>;
-
-  // Estadísticas
-  /** Sesiones con series de un ejercicio, de más antigua a más reciente. */
-  exerciseHistory(exerciseId: string): Promise<ExerciseSession[]>;
 
   // Copia de seguridad
   exportAll(): Promise<GymExport>;
-  importAll(data: GymExport): Promise<void>;
+  /** Acepta también formatos antiguos (se normalizan). */
+  importAll(data: AnyGymData): Promise<void>;
   seed(): Promise<void>;
 }

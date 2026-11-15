@@ -13,8 +13,18 @@ export const gymRepo: GymRepository = dexieGymRepository;
 
 export const useRoutines = () => useLiveQuery(() => gymRepo.listRoutines(), []);
 
+/** Nombre de cada rutina por id, incluidas las borradas. */
+export const useRoutineNames = () =>
+  useLiveQuery(async () => {
+    const all = await gymRepo.listRoutines(true);
+    return Object.fromEntries(all.map((r) => [r.id, r.name])) as Record<string, string>;
+  }, []);
+
 export const useRoutine = (id: string | undefined) =>
   useLiveQuery(async () => (id ? ((await gymRepo.getRoutine(id)) ?? null) : null), [id]);
+
+export const useSections = (routineId: string | undefined) =>
+  useLiveQuery(() => (routineId ? gymRepo.listSections(routineId) : []), [routineId]);
 
 export const useExercises = (routineId: string | undefined) =>
   useLiveQuery(() => (routineId ? gymRepo.listExercises(routineId) : []), [routineId]);
@@ -22,23 +32,15 @@ export const useExercises = (routineId: string | undefined) =>
 export const useExercise = (id: string | undefined) =>
   useLiveQuery(async () => (id ? ((await gymRepo.getExercise(id)) ?? null) : null), [id]);
 
+export const useWeightHistory = (exerciseId: string | undefined) =>
+  useLiveQuery(() => (exerciseId ? gymRepo.weightHistory(exerciseId) : []), [exerciseId]);
+
 export const useLastWorkoutDates = () => useLiveQuery(() => gymRepo.lastWorkoutDates(), []);
 
-/** Entrenamiento de la rutina en esa fecha (null si no existe). */
-export const useWorkout = (routineId: string | undefined, date: string) =>
-  useLiveQuery(
-    async () => (routineId ? ((await gymRepo.findWorkout(routineId, date)) ?? null) : null),
-    [routineId, date],
-  );
+/** Entrenamiento en curso (null si no hay ninguno). */
+export const useActiveWorkout = () =>
+  useLiveQuery(async () => (await gymRepo.getActiveWorkout()) ?? null, []);
 
-export const useWorkoutSets = (workoutId: string | undefined | null) =>
-  useLiveQuery(() => (workoutId ? gymRepo.listSets(workoutId) : []), [workoutId]);
-
-export const useSections = (routineId: string | undefined) =>
-  useLiveQuery(() => (routineId ? gymRepo.listSections(routineId) : []), [routineId]);
-
-export const useLastWeights = (exerciseId: string) =>
-  useLiveQuery(() => gymRepo.lastWeights(exerciseId), [exerciseId]);
-
-export const useExerciseHistory = (exerciseId: string | undefined) =>
-  useLiveQuery(() => (exerciseId ? gymRepo.exerciseHistory(exerciseId) : []), [exerciseId]);
+/** Entrenamientos terminados entre dos fechas YYYY-MM-DD (incluidas). */
+export const useWorkouts = (from: string, to: string) =>
+  useLiveQuery(() => gymRepo.listWorkouts(from, to), [from, to]);

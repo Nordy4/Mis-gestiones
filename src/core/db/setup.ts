@@ -6,8 +6,8 @@ import { coreSchema, db, metaTable } from './db';
  * SÚBELA en 1 cada vez que cambies el `schema` de cualquier módulo
  * (tabla nueva, índice nuevo...). Dexie calcula la migración solo.
  */
-// Historial: 1 = inicial · 2 = gym_sections
-export const DB_VERSION = 2;
+// Historial: 1 = inicial · 2 = gym_sections · 3 = gym cronómetro + gym_weight_log
+export const DB_VERSION = 3;
 
 let initialized: Promise<void> | null = null;
 
@@ -28,7 +28,12 @@ function buildSchema(): Record<string, string> {
 /** Declara las tablas, abre la BD y carga los datos iniciales de cada módulo (una vez). */
 export function initDatabase(): Promise<void> {
   initialized ??= (async () => {
-    db.version(DB_VERSION).stores(buildSchema());
+    db.version(DB_VERSION)
+      .stores(buildSchema())
+      // Solo corre al subir de versión una BD existente. Cada módulo migra sus datos.
+      .upgrade(async (tx) => {
+        for (const mod of modules) await mod.data?.upgrade?.(tx);
+      });
     await db.open();
 
     for (const mod of modules) {

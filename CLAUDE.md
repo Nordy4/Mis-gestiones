@@ -69,7 +69,13 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
 
 - Una sola BD Dexie `mi-vida`. `setup.ts` junta `coreSchema` + `schema` de cada módulo.
 - **Si cambias cualquier `schema`, sube `DB_VERSION` en `src/core/db/setup.ts`.** Dexie migra solo
-  (añadir tablas/índices). Si necesitas transformar datos, añade una `.upgrade()` allí.
+  las tablas e índices (solo se declara la última versión).
+- Para transformar datos, el módulo implementa `data.upgrade(tx)`: setup.ts lo llama en **cada**
+  subida de versión de una BD existente, así que debe ser **idempotente** (mirar la forma de los
+  datos, no suponer la versión de origen). Gym lo hace con `normalizeGymData` (mismo código que al
+  importar copias antiguas). No borres tablas antiguas con datos: déjalas marcadas como legado.
+- Al probar migraciones en el navegador, crea la BD antigua desde una página sin la app cargada
+  (p. ej. `/favicon.svg`): si la app está abierta, reabre la BD y estropea la prueba.
 - Los `seed()` de los módulos se ejecutan una sola vez (marca `seeded:<id>` en `core_meta`).
 - Borrado: preferimos **archivar** (`archivedAt`) para no perder historial.
 
@@ -86,25 +92,32 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
 
 ### Módulo Gym (referencia)
 
-- Rutas (`gym/paths.ts`): `/gym`, `/gym/rutina/:routineId`, `/gym/rutina/:routineId/entrenar`,
-  `/gym/ejercicio/:exerciseId` (estadísticas).
-- Tablas: `gym_routines`, `gym_sections` (bloques con nombre libre dentro de una rutina),
-  `gym_exercises` (por rutina; `sectionId` opcional), `gym_workouts` (uno por rutina y día),
-  `gym_sets` (una fila por serie; se guarda al pulsar, sin botón de "guardar entreno").
-- **Dos personas por serie**: cada serie guarda `weight` (yo) y `partnerWeight` (pareja) con las
-  mismas `reps`. Cualquiera de los dos puede ser null. `Person = 'me' | 'partner'`, etiquetas en
-  `PERSON_LABEL`, colores `--color-me` (#3987e5) / `--color-partner` (#d95926), validados para
-  daltonismo; siempre acompañados del nombre (`PersonDot` + texto), nunca solo color.
+- Pestañas inferiores (`GymTabs`): **Rutinas** (`/gym`) y **Calendario** (`/gym/calendario?dia=`).
+  Otras rutas (`gym/paths.ts`): `/gym/rutina/:id`, `/gym/rutina/:id/entrenar` (cronómetro),
+  `/gym/ejercicio/:id` (evolución del peso).
+- Tablas: `gym_routines`, `gym_sections` (bloques con nombre libre), `gym_exercises` (por rutina;
+  `sectionId` opcional; **pesos actuales** `weight` / `partnerWeight`), `gym_weight_log` (historial:
+  una fila por ejercicio y día con el último valor de ese día), `gym_workouts` (entrenos
+  cronometrados) y `gym_sets` (**legado**, ya no se usa ni se exporta).
+- **Pesos**: se ajustan con +/− (o tocando el número) en la pantalla de la rutina (`WeightControl`).
+  Cada cambio actualiza el ejercicio y apunta el día en `gym_weight_log` (`setWeights`). No hay
+  registro serie a serie.
+- **Dos personas**: `Person = 'me' | 'partner'`, etiquetas en `PERSON_LABEL`, colores
+  `--color-me` (#3987e5) / `--color-partner` (#d95926), validados para daltonismo; siempre con su
+  nombre al lado (`PersonDot` + texto), nunca solo color.
+- **Entrenamiento = cronómetro** (`TimerScreen`): "Empezar" crea un workout con `startedAt`; el
+  tiempo se calcula de las marcas guardadas (`lib/timer.ts` → `elapsedSeconds`), así que sigue
+  contando con la app cerrada. Pausa con `pausedAt` + `pausedSeconds`. Solo un entreno activo a la
+  vez (`finishedAt === null`). Al terminar guarda `durationSeconds` y abre el calendario en ese día.
+  Se puede descartar. `ActiveWorkoutBanner` lo muestra en las pestañas.
+- **Calendario** (`CalendarScreen`): mes con los días entrenados, total del mes, y detalle del día
+  (rutina, hora de inicio, duración, borrar). Usa `useRoutineNames` para incluir rutinas borradas.
 - Secciones: los ejercicios sin sección van arriba; luego cada sección por `order`
-  (`lib/grouping.ts` → `groupBySection` / `displayOrder`). Borrar una sección deja sus ejercicios
-  sin sección.
-- Campos añadidos después de la v1 (`sectionId`, `initialPartnerWeight`, `partnerWeight`) son
-  opcionales en los tipos: los datos antiguos no los tienen. Trátalos con `?? null`.
-- Peso prerrellenado (cada persona por separado): última serie de hoy > última serie con peso
-  del ejercicio > peso inicial.
-- Estadísticas: peso máximo por sesión con una línea por persona (o reps máximas si el ejercicio
-  no tiene peso), récord por persona (más peso, desempata reps) e historial en tabla.
-  Recharts se carga en diferido (`lazy`).
+  (`lib/grouping.ts`). Borrar una sección deja sus ejercicios sin sección.
+- Evolución (`ExerciseStatsScreen`): peso actual y récord por persona, gráfica del historial de
+  pesos (una línea por persona) y tabla por día. Recharts se carga en diferido (`lazy`).
+- Formatos antiguos (v1: `initialWeight`, series; v2: secciones, `partnerWeight` en series;
+  entrenos sin cronómetro) se convierten en `data/normalize.ts` al migrar la BD y al importar.
 
 ## Despliegue
 

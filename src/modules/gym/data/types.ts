@@ -27,33 +27,39 @@ export interface Exercise extends Entity {
   name: string;
   targetSets: number;
   targetReps: number;
-  /** Peso de partida (kg) para prerrellenar si aún no hay series registradas. */
-  initialWeight: number | null;
-  /** Igual que initialWeight, para la pareja. */
-  initialPartnerWeight?: number | null;
+  /** Mi peso actual en kg (null = sin peso). Cada cambio se apunta en gym_weight_log. */
+  weight: number | null;
+  /** Peso actual de la pareja en kg. */
+  partnerWeight: number | null;
   order: number;
   archivedAt?: string | null;
 }
 
-/** Una sesión de entrenamiento de una rutina en un día. */
+/**
+ * Un entrenamiento cronometrado de una rutina.
+ * Activo = `finishedAt === null`. Solo puede haber uno activo a la vez.
+ * Tiempo transcurrido = (fin | pausa | ahora) − startedAt − pausedSeconds (ver lib/timer.ts).
+ */
 export interface Workout extends Entity {
   routineId: string;
-  /** Día local YYYY-MM-DD. */
+  /** Día local de inicio, YYYY-MM-DD (para el calendario). */
   date: string;
   startedAt: string;
   finishedAt: string | null;
+  /** Duración final en segundos. null mientras está activo o en registros antiguos sin cronómetro. */
+  durationSeconds: number | null;
+  /** Si está en pausa, desde cuándo. */
+  pausedAt: string | null;
+  /** Segundos acumulados en pausas ya terminadas. */
+  pausedSeconds: number;
 }
 
-/** Una serie realizada de un ejercicio dentro de un entrenamiento. */
-export interface WorkoutSet extends Entity {
-  workoutId: string;
+/** Peso de un ejercicio en un día (uno por ejercicio y día: el último valor de ese día). */
+export interface WeightLogEntry extends Entity {
   exerciseId: string;
-  setIndex: number;
-  /** Mi peso en kg; null = sin peso (p. ej. abdominales). */
+  date: string;
   weight: number | null;
-  /** Peso de la pareja en kg en la misma serie; null/ausente = no lo hizo o sin peso. */
-  partnerWeight?: number | null;
-  reps: number;
+  partnerWeight: number | null;
 }
 
 export interface ExerciseInput {
@@ -61,34 +67,17 @@ export interface ExerciseInput {
   sectionId: string | null;
   targetSets: number;
   targetReps: number;
-  initialWeight: number | null;
-  initialPartnerWeight: number | null;
-}
-
-/** Pesos prerrellenados de un ejercicio. */
-export interface LastWeights {
   weight: number | null;
   partnerWeight: number | null;
-}
-
-/** Una sesión en el historial de un ejercicio. */
-export interface ExerciseSession {
-  workout: Workout;
-  sets: WorkoutSet[];
-  /** Mi peso máximo de la sesión (null si todas sin peso). */
-  topWeight: number | null;
-  /** Peso máximo de la pareja en la sesión (null si no hay). */
-  topPartnerWeight: number | null;
 }
 
 /** Formato de la copia de seguridad del módulo. */
 export interface GymExport {
   routines: Routine[];
-  /** Ausente en copias anteriores a las secciones. */
-  sections?: Section[];
+  sections: Section[];
   exercises: Exercise[];
   workouts: Workout[];
-  sets: WorkoutSet[];
+  weightLog: WeightLogEntry[];
 }
 
 /** Quién hizo el peso: yo o la pareja. */

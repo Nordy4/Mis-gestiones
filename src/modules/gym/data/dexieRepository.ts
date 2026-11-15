@@ -1,41 +1,49 @@
-import Dexie from 'dexie';
+import Dexie, { type Transaction } from 'dexie';
 import { db } from '@/core/db/db';
 import { newId, nowIso } from '@/core/lib/ids';
+import { todayKey } from '@/core/lib/format';
 import type { GymRepository } from './repository';
-import type { Exercise, ExerciseSession, GymExport, Routine, Section, Workout, WorkoutSet } from './types';
+import type { Exercise, Routine, Section, WeightLogEntry, Workout } from './types';
+import { normalizeGymData, type AnyGymData, type LegacySet } from './normalize';
+import { elapsedSeconds } from '../lib/timer';
 import { seedRoutines } from './seed';
 
 const routines = () => db.table<Routine, string>('gym_routines');
 const sections = () => db.table<Section, string>('gym_sections');
 const exercises = () => db.table<Exercise, string>('gym_exercises');
 const workouts = () => db.table<Workout, string>('gym_workouts');
-const sets = () => db.table<WorkoutSet, string>('gym_sets');
+const weightLog = () => db.table<WeightLogEntry, string>('gym_weight_log');
 
-const allTables = () => [routines(), sections(), exercises(), workouts(), sets()];
+/** Tablas que forman la copia de seguridad (gym_sets es legado y no se exporta). */
+const dataTables = () => [routines(), sections(), exercises(), workouts(), weightLog()];
 
 const isActive = (x: { archivedAt?: string | null }) => !x.archivedAt;
 const cleanName = (s: string) => s.trim().replace(/\s+/g, ' ');
-const maxNumber = (xs: (number | null | undefined)[]) => {
-  const nums = xs.filter((x): x is number => typeof x === 'number');
-  return nums.length ? Math.max(...nums) : null;
-};
-
-function setsOfExercise(exerciseId: string) {
-  return sets()
-    .where('[exerciseId+createdAt]')
-    .between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey]);
-}
 
 async function activeSections(routineId: string) {
   const list = await sections().where('routineId').equals(routineId).toArray();
   return list.filter(isActive).sort((a, b) => a.order - b.order);
 }
 
+/** Apunta (o sobrescribe) los pesos de hoy en el historial del ejercicio. */
+async function logWeights(exerciseId: string, weight: number | null, partnerWeight: number | null) {
+  const date = todayKey();
+  const now = nowIso();
+  const existing = await weightLog().where('[exerciseId+date]').equals([exerciseId, date]).first();
+  if (existing) {
+    await weightLog().update(existing.id, { weight, partnerWeight, updatedAt: now });
+  } else {
+    await weightLog().add({ id: newId(), exerciseId, date, weight, partnerWeight, createdAt: now, updatedAt: now });
+  }
+}
+
+const findActive = () => workouts().filter((w) => w.finishedAt === null).first();
+
 export const dexieGymRepository: GymRepository = {
   // ---------- Rutinas ----------
-  async listRoutines() {
+  async listRoutines(includeArchived = false) {
     const all = await routines().orderBy('order').toArray();
-    return all.filter(isActive);
+    return includeArchived ? all : all.filter(isActive);
   },
 
   getRoutine: (id) => routines().get(id),
@@ -99,7 +107,6 @@ export const dexieGymRepository: GymRepository = {
       const i = list.findIndex((s) => s.id === id);
       const j = i + direction;
       if (i < 0 || j < 0 || j >= list.length) return;
-      // Renumera para que el orden quede compacto y sin empates.
       [list[i], list[j]] = [list[j], list[i]];
       const now = nowIso();
       await Promise.all(list.map((s, idx) => sections().update(s.id, { order: idx, updatedAt: now })));
@@ -116,7 +123,7 @@ export const dexieGymRepository: GymRepository = {
     });
   },
 
-  // ---------- Ejercicios ----------
+  // ---------- Ejercicios y pesos ----------
   async listExercises(routineId) {
     const all = await exercises()
       .where('[routineId+order]')
@@ -128,28 +135,46 @@ export const dexieGymRepository: GymRepository = {
   getExercise: (id) => exercises().get(id),
 
   async addExercise(routineId, input) {
-    const existing = await exercises().where('routineId').equals(routineId).toArray();
-    const now = nowIso();
-    const exercise: Exercise = {
-      id: newId(),
-      routineId,
-      sectionId: input.sectionId,
-      name: cleanName(input.name),
-      targetSets: input.targetSets,
-      targetReps: input.targetReps,
-      initialWeight: input.initialWeight,
-      initialPartnerWeight: input.initialPartnerWeight,
-      order: existing.reduce((m, e) => Math.max(m, e.order), -1) + 1,
-      createdAt: now,
-      updatedAt: now,
-      archivedAt: null,
-    };
-    await exercises().add(exercise);
-    return exercise;
+    return db.transaction('rw', exercises(), weightLog(), async () => {
+      const existing = await exercises().where('routineId').equals(routineId).toArray();
+      const now = nowIso();
+      const exercise: Exercise = {
+        id: newId(),
+        routineId,
+        sectionId: input.sectionId,
+        name: cleanName(input.name),
+        targetSets: input.targetSets,
+        targetReps: input.targetReps,
+        weight: input.weight,
+        partnerWeight: input.partnerWeight,
+        order: existing.reduce((m, e) => Math.max(m, e.order), -1) + 1,
+        createdAt: now,
+        updatedAt: now,
+        archivedAt: null,
+      };
+      await exercises().add(exercise);
+      if (input.weight !== null || input.partnerWeight !== null) {
+        await logWeights(exercise.id, input.weight, input.partnerWeight);
+      }
+      return exercise;
+    });
   },
 
   async updateExercise(id, input) {
-    await exercises().update(id, { ...input, name: cleanName(input.name), updatedAt: nowIso() });
+    await db.transaction('rw', exercises(), weightLog(), async () => {
+      const prev = await exercises().get(id);
+      await exercises().update(id, { ...input, name: cleanName(input.name), updatedAt: nowIso() });
+      if (prev && (prev.weight !== input.weight || prev.partnerWeight !== input.partnerWeight)) {
+        await logWeights(id, input.weight, input.partnerWeight);
+      }
+    });
+  },
+
+  async setWeights(id, weight, partnerWeight) {
+    await db.transaction('rw', exercises(), weightLog(), async () => {
+      await exercises().update(id, { weight, partnerWeight, updatedAt: nowIso() });
+      await logWeights(id, weight, partnerWeight);
+    });
   },
 
   async archiveExercise(id) {
@@ -157,20 +182,33 @@ export const dexieGymRepository: GymRepository = {
     await exercises().update(id, { archivedAt: now, updatedAt: now });
   },
 
-  // ---------- Entrenamientos ----------
-  findWorkout: (routineId, date) => workouts().where('[routineId+date]').equals([routineId, date]).first(),
+  async weightHistory(exerciseId) {
+    return weightLog()
+      .where('[exerciseId+date]')
+      .between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey])
+      .toArray();
+  },
 
-  async getOrCreateWorkout(routineId, date) {
+  // ---------- Entrenamientos ----------
+  getActiveWorkout: () => findActive(),
+
+  async startWorkout(routineId) {
     return db.transaction('rw', workouts(), async () => {
-      const existing = await workouts().where('[routineId+date]').equals([routineId, date]).first();
-      if (existing) return existing;
+      const active = await findActive();
+      if (active) {
+        if (active.routineId === routineId) return active;
+        throw new Error('Ya hay un entrenamiento en curso. Termínalo antes de empezar otro.');
+      }
       const now = nowIso();
       const workout: Workout = {
         id: newId(),
         routineId,
-        date,
+        date: todayKey(),
         startedAt: now,
         finishedAt: null,
+        durationSeconds: null,
+        pausedAt: null,
+        pausedSeconds: 0,
         createdAt: now,
         updatedAt: now,
       };
@@ -179,117 +217,77 @@ export const dexieGymRepository: GymRepository = {
     });
   },
 
-  async finishWorkout(id) {
-    await db.transaction('rw', workouts(), sets(), async () => {
-      const count = await sets().where('workoutId').equals(id).count();
-      if (count === 0) {
-        await workouts().delete(id);
-      } else {
-        const now = nowIso();
-        await workouts().update(id, { finishedAt: now, updatedAt: now });
-      }
+  async pauseWorkout(id) {
+    const now = nowIso();
+    await workouts().update(id, { pausedAt: now, updatedAt: now });
+  },
+
+  async resumeWorkout(id) {
+    await db.transaction('rw', workouts(), async () => {
+      const w = await workouts().get(id);
+      if (!w?.pausedAt) return;
+      const pausedFor = Math.floor((Date.now() - Date.parse(w.pausedAt)) / 1000);
+      await workouts().update(id, {
+        pausedAt: null,
+        pausedSeconds: (w.pausedSeconds ?? 0) + Math.max(0, pausedFor),
+        updatedAt: nowIso(),
+      });
     });
   },
 
+  async finishWorkout(id) {
+    return db.transaction('rw', workouts(), async () => {
+      const w = await workouts().get(id);
+      if (!w) throw new Error('Entrenamiento no encontrado');
+      if (w.finishedAt) return w;
+      const durationSeconds = elapsedSeconds(w);
+      const now = nowIso();
+      const finished: Workout = { ...w, finishedAt: now, durationSeconds, pausedAt: null, updatedAt: now };
+      await workouts().put(finished);
+      return finished;
+    });
+  },
+
+  async deleteWorkout(id) {
+    await workouts().delete(id);
+  },
+
+  async listWorkouts(from, to) {
+    const list = await workouts().where('date').between(from, to, true, true).toArray();
+    return list.filter((w) => w.finishedAt !== null).sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  },
+
   async lastWorkoutDates() {
-    const [allWorkouts, allSets] = await Promise.all([workouts().toArray(), sets().toArray()]);
-    const withSets = new Set(allSets.map((s) => s.workoutId));
+    const all = await workouts().toArray();
     const result: Record<string, string> = {};
-    for (const w of allWorkouts) {
-      if (!withSets.has(w.id)) continue;
+    for (const w of all) {
+      if (w.finishedAt === null) continue;
       if (!result[w.routineId] || w.date > result[w.routineId]) result[w.routineId] = w.date;
     }
     return result;
   },
 
-  // ---------- Series ----------
-  async listSets(workoutId) {
-    const list = await sets().where('workoutId').equals(workoutId).toArray();
-    return list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  },
-
-  async addSet(workoutId, exerciseId, weight, partnerWeight, reps) {
-    return db.transaction('rw', sets(), workouts(), async () => {
-      const previous = await sets().where('workoutId').equals(workoutId).toArray();
-      const now = nowIso();
-      const set: WorkoutSet = {
-        id: newId(),
-        workoutId,
-        exerciseId,
-        setIndex: previous.filter((s) => s.exerciseId === exerciseId).length,
-        weight,
-        partnerWeight,
-        reps,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await sets().add(set);
-      // Si se añade una serie a un entreno ya terminado, vuelve a estar en curso.
-      await workouts().update(workoutId, { finishedAt: null, updatedAt: now });
-      return set;
-    });
-  },
-
-  async deleteSet(id) {
-    await sets().delete(id);
-  },
-
-  async lastWeights(exerciseId) {
-    const history = await setsOfExercise(exerciseId).reverse().toArray();
-    const lastMine = history.find((s) => s.weight != null);
-    const lastPartner = history.find((s) => s.partnerWeight != null);
-    if (lastMine && lastPartner) return { weight: lastMine.weight, partnerWeight: lastPartner.partnerWeight ?? null };
-    const exercise = await exercises().get(exerciseId);
-    return {
-      weight: lastMine ? lastMine.weight : (exercise?.initialWeight ?? null),
-      partnerWeight: lastPartner ? (lastPartner.partnerWeight ?? null) : (exercise?.initialPartnerWeight ?? null),
-    };
-  },
-
-  // ---------- Estadísticas ----------
-  async exerciseHistory(exerciseId) {
-    const list = await setsOfExercise(exerciseId).toArray();
-    const byWorkout = new Map<string, WorkoutSet[]>();
-    for (const s of list) {
-      const arr = byWorkout.get(s.workoutId) ?? [];
-      arr.push(s);
-      byWorkout.set(s.workoutId, arr);
-    }
-    const ws = await workouts().bulkGet([...byWorkout.keys()]);
-    const sessions: ExerciseSession[] = [];
-    for (const w of ws) {
-      if (!w) continue;
-      const wSets = byWorkout.get(w.id)!;
-      sessions.push({
-        workout: w,
-        sets: wSets,
-        topWeight: maxNumber(wSets.map((s) => s.weight)),
-        topPartnerWeight: maxNumber(wSets.map((s) => s.partnerWeight)),
-      });
-    }
-    return sessions.sort((a, b) => a.workout.date.localeCompare(b.workout.date));
-  },
-
   // ---------- Copia de seguridad ----------
   async exportAll() {
-    const [r, sec, e, w, s] = await Promise.all(allTables().map((t) => t.toArray()));
+    const [r, sec, e, w, log] = await Promise.all(dataTables().map((t) => t.toArray()));
     return {
       routines: r as Routine[],
       sections: sec as Section[],
       exercises: e as Exercise[],
       workouts: w as Workout[],
-      sets: s as WorkoutSet[],
+      weightLog: log as WeightLogEntry[],
     };
   },
 
-  async importAll(data: GymExport) {
-    await db.transaction('rw', allTables(), async () => {
-      await Promise.all(allTables().map((t) => t.clear()));
-      await routines().bulkAdd(data.routines);
-      await sections().bulkAdd(data.sections ?? []);
-      await exercises().bulkAdd(data.exercises);
-      await workouts().bulkAdd(data.workouts);
-      await sets().bulkAdd(data.sets);
+  async importAll(data) {
+    const d = normalizeGymData(data);
+    await db.transaction('rw', dataTables(), async () => {
+      await Promise.all(dataTables().map((t) => t.clear()));
+      await routines().bulkAdd(d.routines);
+      await sections().bulkAdd(d.sections);
+      await exercises().bulkAdd(d.exercises);
+      await workouts().bulkAdd(d.workouts);
+      await weightLog().bulkAdd(d.weightLog);
     });
   },
 
@@ -315,3 +313,30 @@ export const dexieGymRepository: GymRepository = {
     });
   },
 };
+
+/**
+ * Migración de la BD (se llama desde setup.ts al subir DB_VERSION). Idempotente.
+ * Convierte ejercicios/entrenos antiguos y las series legadas en historial de pesos.
+ */
+export async function upgradeGymData(tx: Transaction): Promise<void> {
+  const t = (name: string) => tx.table(name);
+  const [r, sec, ex, wk, log, legacySets] = await Promise.all([
+    t('gym_routines').toArray(),
+    t('gym_sections').toArray(),
+    t('gym_exercises').toArray(),
+    t('gym_workouts').toArray(),
+    t('gym_weight_log').toArray(),
+    t('gym_sets').toArray(),
+  ]);
+  const d = normalizeGymData({
+    routines: r,
+    sections: sec,
+    exercises: ex,
+    workouts: wk,
+    weightLog: log,
+    sets: legacySets as LegacySet[],
+  } satisfies AnyGymData);
+  await t('gym_exercises').bulkPut(d.exercises);
+  await t('gym_workouts').bulkPut(d.workouts);
+  if (log.length === 0 && d.weightLog.length) await t('gym_weight_log').bulkAdd(d.weightLog);
+}

@@ -47,8 +47,8 @@ export function ExerciseFormSheet({
     setSectionId(exercise ? (exercise.sectionId ?? null) : defaultSectionId);
     setSets(exercise?.targetSets ?? DEFAULT_SETS);
     setReps(exercise?.targetReps ?? DEFAULT_REPS);
-    setWeight(exercise?.initialWeight ?? null);
-    setPartnerWeight(exercise?.initialPartnerWeight ?? null);
+    setWeight(exercise?.weight ?? null);
+    setPartnerWeight(exercise?.partnerWeight ?? null);
   }, [open, exercise, defaultSectionId]);
 
   const valid = name.trim().length > 0 && (sets ?? 0) > 0 && (reps ?? 0) > 0;
@@ -70,8 +70,8 @@ export function ExerciseFormSheet({
             sectionId,
             targetSets: sets!,
             targetReps: reps!,
-            initialWeight: weight,
-            initialPartnerWeight: partnerWeight,
+            weight,
+            partnerWeight,
           });
           onClose();
         }}
@@ -106,7 +106,7 @@ export function ExerciseFormSheet({
           <Stepper label="Reps" value={reps} onChange={setReps} step={1} min={1} />
         </div>
         <Stepper
-          label="Mi peso inicial (opcional)"
+          label="Mi peso (opcional)"
           value={weight}
           onChange={setWeight}
           step={WEIGHT_STEP}
@@ -115,7 +115,7 @@ export function ExerciseFormSheet({
           decimal
         />
         <Stepper
-          label="Peso inicial pareja (opcional)"
+          label="Peso pareja (opcional)"
           value={partnerWeight}
           onChange={setPartnerWeight}
           step={WEIGHT_STEP}

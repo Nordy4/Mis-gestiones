@@ -1,45 +1,58 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { ChartLine, Dumbbell, FolderPlus, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { ChartLine, Dumbbell, FolderPlus, Pencil, Play, Plus, Timer, Trash2 } from 'lucide-react';
 import { Screen } from '@/core/components/Screen';
 import { Button, IconButton } from '@/core/components/Button';
 import { ConfirmSheet } from '@/core/components/Sheet';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NotFoundScreen } from '@/core/components/NotFoundScreen';
-import { todayKey } from '@/core/lib/format';
-import { gymRepo, useExercises, useLastWeights, useRoutine, useSections, useWorkout } from '../data/hooks';
+import { useNow } from '@/core/lib/useNow';
+import { gymRepo, useActiveWorkout, useExercises, useRoutine, useSections } from '../data/hooks';
 import type { Exercise, Section } from '../data/types';
 import { ExerciseFormSheet } from '../components/ExerciseFormSheet';
 import { RoutineNameSheet } from '../components/RoutineNameSheet';
 import { SectionSheet } from '../components/SectionSheet';
-import { WeightBadges } from '../components/PersonWeights';
+import { WeightControl } from '../components/WeightControl';
 import { groupBySection } from '../lib/grouping';
+import { elapsedSeconds, formatClock } from '../lib/timer';
 import { gymPaths } from '../paths';
 
 function ExerciseRow({ exercise, onEdit }: { exercise: Exercise; onEdit: () => void }) {
-  const last = useLastWeights(exercise.id);
+  const save = (weight: number | null, partnerWeight: number | null) =>
+    gymRepo.setWeights(exercise.id, weight, partnerWeight);
   return (
-    <li className="flex items-center rounded-2xl border border-border/60 bg-surface">
-      <button type="button" onClick={onEdit} className="min-w-0 flex-1 p-4 text-left active:opacity-70">
-        <span className="flex items-baseline justify-between gap-2">
-          <span className="truncate font-semibold">{exercise.name}</span>
-          <span className="shrink-0 text-sm text-muted tabular-nums">
-            {exercise.targetSets}×{exercise.targetReps}
+    <li className="rounded-2xl border border-border/60 bg-surface">
+      <div className="flex items-center">
+        <button type="button" onClick={onEdit} className="min-w-0 flex-1 px-4 pt-3 pb-2 text-left active:opacity-70">
+          <span className="flex items-baseline gap-2">
+            <span className="truncate font-semibold">{exercise.name}</span>
+            <span className="shrink-0 text-sm text-muted tabular-nums">
+              {exercise.targetSets}×{exercise.targetReps}
+            </span>
           </span>
-        </span>
-        {last && (last.weight != null || last.partnerWeight != null) && (
-          <span className="mt-2 block">
-            <WeightBadges weight={last.weight} partnerWeight={last.partnerWeight} />
-          </span>
-        )}
-      </button>
-      <Link
-        to={gymPaths.exercise(exercise.id)}
-        aria-label={`Estadísticas de ${exercise.name}`}
-        className="grid size-14 shrink-0 place-items-center self-stretch text-muted active:text-accent"
-      >
-        <ChartLine className="size-5" />
-      </Link>
+        </button>
+        <Link
+          to={gymPaths.exercise(exercise.id)}
+          aria-label={`Evolución de ${exercise.name}`}
+          className="grid size-12 shrink-0 place-items-center text-muted active:text-accent"
+        >
+          <ChartLine className="size-5" />
+        </Link>
+      </div>
+      <div className="space-y-2 px-3 pb-3">
+        <WeightControl
+          person="me"
+          exerciseName={exercise.name}
+          value={exercise.weight ?? null}
+          onChange={(v) => save(v, exercise.partnerWeight ?? null)}
+        />
+        <WeightControl
+          person="partner"
+          exerciseName={exercise.name}
+          value={exercise.partnerWeight ?? null}
+          onChange={(v) => save(exercise.weight ?? null, v)}
+        />
+      </div>
     </li>
   );
 }
@@ -50,7 +63,9 @@ export function RoutineScreen() {
   const routine = useRoutine(routineId);
   const sections = useSections(routineId);
   const exercises = useExercises(routineId);
-  const todayWorkout = useWorkout(routineId, todayKey());
+  const active = useActiveWorkout();
+  const activeRoutine = useRoutine(active?.routineId);
+  const now = useNow(!!active && !active.pausedAt);
 
   const [renaming, setRenaming] = useState(false);
   const [deletingRoutine, setDeletingRoutine] = useState(false);
@@ -63,12 +78,32 @@ export function RoutineScreen() {
   const [deletingSection, setDeletingSection] = useState<Section | null>(null);
 
   if (routine === null || routine?.archivedAt) return <NotFoundScreen />;
-  if (!routine || !exercises || !sections) return null;
+  if (!routine || !exercises || !sections || active === undefined) return null;
 
   const groups = groupBySection(exercises, sections);
-  const inProgress = todayWorkout && !todayWorkout.finishedAt;
   const editingSectionIndex = sections.findIndex((s) => s.id === editingSectionId);
   const editingSection = editingSectionIndex >= 0 ? sections[editingSectionIndex] : null;
+
+  const footer = !active ? (
+    <Button
+      size="lg"
+      block
+      onClick={async () => {
+        await gymRepo.startWorkout(routine.id);
+        navigate(gymPaths.workout(routine.id));
+      }}
+    >
+      <Play className="size-5" /> Empezar entrenamiento
+    </Button>
+  ) : active.routineId === routine.id ? (
+    <Button size="lg" block onClick={() => navigate(gymPaths.workout(routine.id))}>
+      <Timer className="size-5" /> Ver cronómetro · <span className="tabular-nums">{formatClock(elapsedSeconds(active, now))}</span>
+    </Button>
+  ) : (
+    <Button size="lg" block variant="secondary" onClick={() => navigate(gymPaths.workout(active.routineId))}>
+      <Timer className="size-5" /> En curso: {activeRoutine?.name ?? '…'}
+    </Button>
+  );
 
   return (
     <Screen
@@ -85,17 +120,7 @@ export function RoutineScreen() {
           </IconButton>
         </>
       }
-      footer={
-        <Button
-          size="lg"
-          block
-          disabled={exercises.length === 0}
-          onClick={() => navigate(gymPaths.workout(routine.id))}
-        >
-          <Play className="size-5" />
-          {inProgress ? 'Continuar entrenamiento' : todayWorkout ? 'Volver al entreno de hoy' : 'Empezar entrenamiento'}
-        </Button>
-      }
+      footer={footer}
     >
       {exercises.length === 0 && sections.length === 0 && (
         <EmptyState icon={Dumbbell} title="Rutina vacía">
@@ -155,7 +180,7 @@ export function RoutineScreen() {
       <ConfirmSheet
         open={deletingRoutine}
         title={`¿Borrar "${routine.name}"?`}
-        message="La rutina desaparecerá de la lista. El historial de entrenamientos se conserva en la copia de seguridad."
+        message="La rutina desaparecerá de la lista. Los entrenamientos del calendario y el historial de pesos se conservan."
         confirmLabel="Borrar"
         danger
         onConfirm={async () => {
@@ -214,7 +239,7 @@ export function RoutineScreen() {
       <ConfirmSheet
         open={deletingExercise !== null}
         title={`¿Borrar "${deletingExercise?.name ?? ''}"?`}
-        message="Se quitará de la rutina. Sus series registradas se conservan en la copia de seguridad."
+        message="Se quitará de la rutina. Su historial de pesos se conserva en la copia de seguridad."
         confirmLabel="Borrar"
         danger
         onConfirm={() => deletingExercise && gymRepo.archiveExercise(deletingExercise.id)}
