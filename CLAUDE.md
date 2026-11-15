@@ -73,6 +73,34 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
 - Los `seed()` de los módulos se ejecutan una sola vez (marca `seeded:<id>` en `core_meta`).
 - Borrado: preferimos **archivar** (`archivedAt`) para no perder historial.
 
+### Copia de seguridad (`src/core/db/backup.ts`)
+
+- Archivo `{ app: 'mi-vida', version, exportedAt, modules: { <id>: <exportData()> } }`.
+- Exportar recorre los módulos con `data`; importar llama a `importData` de cada módulo presente en
+  el archivo (sustituye sus datos) y marca `seeded:<id>`. Los módulos ausentes no se tocan.
+- `importData` debe **validar antes de borrar** (ver `gym/data/backup.ts` → `parseGymExport`) y
+  escribir todo en una transacción Dexie.
+- Si cambias el formato exportado de un módulo de forma incompatible, sube `BACKUP_VERSION` y
+  acepta también el formato antiguo en `importData`.
+- UI en Ajustes: compartir (Web Share → Drive), descargar JSON, importar con confirmación.
+
+### Módulo Gym (referencia)
+
+- Rutas (`gym/paths.ts`): `/gym`, `/gym/rutina/:routineId`, `/gym/rutina/:routineId/entrenar`,
+  `/gym/ejercicio/:exerciseId` (estadísticas).
+- Tablas: `gym_routines`, `gym_exercises` (por rutina), `gym_workouts` (uno por rutina y día),
+  `gym_sets` (una fila por serie; se guarda al pulsar, sin botón de "guardar entreno").
+- Peso prerrellenado: última serie de hoy > última serie con peso del ejercicio > `initialWeight`.
+- Estadísticas: peso máximo por sesión (o reps máximas si el ejercicio no tiene peso), récord
+  (más peso, desempata reps) e historial. Recharts se carga en diferido (`lazy`).
+
+## Despliegue
+
+- Build estático en `dist/` con rutas relativas (`base: './'`) + HashRouter → sirve en cualquier ruta.
+- Vercel: `vercel.json` (sin caché para `sw.js`/`index.html`, caché larga para `assets/`).
+- GitHub Pages: `.github/workflows/deploy-pages.yml` (Source: GitHub Actions) en cada push a `main`.
+- La PWA solo es instalable/offline bajo HTTPS (o `localhost`).
+
 ## Convenciones de UI
 
 - Mobile-first, ancho máximo `max-w-xl`. Objetivos táctiles ≥ 44px (`size-11`, `h-11`, `h-14`).
