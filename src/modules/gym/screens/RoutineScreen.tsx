@@ -58,7 +58,7 @@ function ExerciseRow({ exercise, onEdit, onDelete }: ExerciseRowProps) {
 
   return (
     <li className="py-3">
-      <div className="flex items-end gap-3">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onEdit}
@@ -89,7 +89,7 @@ function ExerciseRow({ exercise, onEdit, onDelete }: ExerciseRowProps) {
           {record('partner')}
         </Link>
         <IconButton label={`Borrar ${exercise.name}`} onClick={onDelete} className="-my-2 -mr-2">
-          <Trash2 className="size-5" />
+          <Trash2 className="size-4" />
         </IconButton>
       </div>
     </li>
@@ -152,10 +152,10 @@ export function RoutineScreen() {
       actions={
         <>
           <IconButton label="Renombrar rutina" onClick={() => setRenaming(true)}>
-            <Pencil className="size-5" />
+            <Pencil className="size-4" />
           </IconButton>
           <IconButton label="Borrar rutina" onClick={() => setDeletingRoutine(true)}>
-            <Trash2 className="size-5" />
+            <Trash2 className="size-4" />
           </IconButton>
         </>
       }

@@ -35,7 +35,7 @@ export function WeightInput({ person, value, onChange, exerciseName }: Props) {
 
   const s = STYLE[person];
   return (
-    <label className={`flex w-[5.5rem] shrink-0 items-baseline gap-1 border-b-2 pb-0.5 ${s.border}`}>
+    <label className={`flex w-[4.5rem] shrink-0 items-baseline gap-1 border-b-2 ${s.border}`}>
       <input
         inputMode="decimal"
         enterKeyHint="done"
@@ -49,9 +49,9 @@ export function WeightInput({ person, value, onChange, exerciseName }: Props) {
         onChange={(e) => setText(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-        className={`w-full min-w-0 bg-transparent text-right text-2xl font-bold tabular-nums outline-none placeholder:text-muted/50 ${s.text}`}
+        className={`w-full min-w-0 bg-transparent text-right text-lg leading-tight font-semibold tabular-nums outline-none placeholder:text-muted/50 ${s.text}`}
       />
-      <span className="text-sm text-muted">kg</span>
+      <span className="text-xs text-muted">kg</span>
     </label>
   );
 }
