@@ -2,7 +2,7 @@ import { createHashRouter, RouterProvider, useRouteError } from 'react-router';
 import { modules } from '@/modules/registry';
 import { HomeScreen } from '@/pages/HomeScreen';
 import { SettingsScreen } from '@/pages/SettingsScreen';
-import { NotFoundScreen } from '@/pages/NotFoundScreen';
+import { NotFoundScreen } from '@/core/components/NotFoundScreen';
 import { Screen } from '@/core/components/Screen';
 
 function RouteError() {

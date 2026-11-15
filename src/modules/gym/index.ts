@@ -1,6 +1,8 @@
 import { Dumbbell } from 'lucide-react';
 import type { ModuleDefinition } from '@/core/types';
 import { gymRoutes } from './routes';
+import { gymSchema } from './data/schema';
+import { gymData } from './data/backup';
 
 export const gymModule: ModuleDefinition = {
   id: 'gym',
@@ -10,4 +12,8 @@ export const gymModule: ModuleDefinition = {
   color: 'bg-emerald-500/15 text-emerald-400',
   path: 'gym',
   routes: gymRoutes,
+  data: {
+    schema: gymSchema,
+    ...gymData,
+  },
 };

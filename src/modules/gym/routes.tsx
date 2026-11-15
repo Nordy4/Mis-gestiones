@@ -1,12 +1,11 @@
 import type { RouteObject } from 'react-router';
-import { Screen } from '@/core/components/Screen';
+import { RoutinesScreen } from './screens/RoutinesScreen';
+import { RoutineScreen } from './screens/RoutineScreen';
+import { WorkoutScreen } from './screens/WorkoutScreen';
 
-function GymPlaceholder() {
-  return (
-    <Screen title="Gym" backTo="/">
-      <p className="text-muted">Próximamente: rutinas y entrenamientos.</p>
-    </Screen>
-  );
-}
-
-export const gymRoutes: RouteObject[] = [{ index: true, element: <GymPlaceholder /> }];
+/** Rutas relativas a /gym. Mantener sincronizado con paths.ts. */
+export const gymRoutes: RouteObject[] = [
+  { index: true, element: <RoutinesScreen /> },
+  { path: 'rutina/:routineId', element: <RoutineScreen /> },
+  { path: 'rutina/:routineId/entrenar', element: <WorkoutScreen /> },
+];
