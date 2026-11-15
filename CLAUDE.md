@@ -99,12 +99,17 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
   `sectionId` opcional; **pesos actuales** `weight` / `partnerWeight`), `gym_weight_log` (historial:
   una fila por ejercicio y día con el último valor de ese día), `gym_workouts` (entrenos
   cronometrados) y `gym_sets` (**legado**, ya no se usa ni se exporta).
-- **Pesos**: se ajustan con +/− (o tocando el número) en la pantalla de la rutina (`WeightControl`).
-  Cada cambio actualiza el ejercicio y apunta el día en `gym_weight_log` (`setWeights`). No hay
-  registro serie a serie.
-- **Dos personas**: `Person = 'me' | 'partner'`, etiquetas en `PERSON_LABEL`, colores
-  `--color-me` (#3987e5) / `--color-partner` (#d95926), validados para daltonismo; siempre con su
-  nombre al lado (`PersonDot` + texto), nunca solo color.
+- **Pesos**: se escriben a mano (sin botones +/−) en `WeightInput`: número grande subrayado con el
+  color de la persona + "kg", se guarda al salir del campo o pulsar Enter. Cada cambio actualiza el
+  ejercicio y apunta el día en `gym_weight_log` (`setWeights`). No hay registro serie a serie.
+- **Fila de ejercicio** (diseño pedido por el usuario): nombre a la izquierda, peso mío y de la
+  pareja a la derecha; debajo "● 45 kg · 13 nov" / "● sin registro" (último registro de cada uno,
+  enlaza a la evolución) y papelera. Filas separadas por líneas, sin tarjetas. Tocar el nombre
+  abre el formulario de edición.
+- **Dos personas**: `Person = 'me' | 'partner'`, etiquetas en `PERSON_LABEL`. Colores: **morado
+  `--color-me` #9d7bf5 (yo)** y **azul pastel `--color-partner` #8ccbf7 (pareja)**, elegidos por el
+  usuario; `PERSON_COLOR` repite los valores para Recharts. Siempre con su nombre al lado
+  (`PersonDot` + texto o `sr-only`), nunca solo color.
 - **Entrenamiento = cronómetro** (`TimerScreen`): "Empezar" crea un workout con `startedAt`; el
   tiempo se calcula de las marcas guardadas (`lib/timer.ts` → `elapsedSeconds`), así que sigue
   contando con la app cerrada. Pausa con `pausedAt` + `pausedSeconds`. Solo un entreno activo a la

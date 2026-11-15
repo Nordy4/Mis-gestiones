@@ -11,9 +11,10 @@
   --color-accent: #10b981;
   --color-accent-strong: #059669;
   --color-danger: #ef4444;
-  /* Identidad de persona en Gym (validados para daltonismo sobre surface) */
-  --color-me: #3987e5;
-  --color-partner: #d95926;
+  /* Identidad de persona en Gym: morado (yo) y azul pastel (pareja).
+     Separación validada también para daltonismo; van siempre con su etiqueta. */
+  --color-me: #9d7bf5;
+  --color-partner: #8ccbf7;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 

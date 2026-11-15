@@ -4,14 +4,9 @@ import { Sheet } from '@/core/components/Sheet';
 import { Field } from '@/core/components/Field';
 import { Button } from '@/core/components/Button';
 import { Stepper } from '@/core/components/Stepper';
-import {
-  DEFAULT_REPS,
-  DEFAULT_SETS,
-  WEIGHT_STEP,
-  type Exercise,
-  type ExerciseInput,
-  type Section,
-} from '../data/types';
+import { DEFAULT_REPS, DEFAULT_SETS, type Exercise, type ExerciseInput, type Section } from '../data/types';
+import { PersonDot } from './PersonWeights';
+import { WeightInput } from './WeightInput';
 
 interface Props {
   open: boolean;
@@ -105,24 +100,21 @@ export function ExerciseFormSheet({
           <Stepper label="Series" value={sets} onChange={setSets} step={1} min={1} />
           <Stepper label="Reps" value={reps} onChange={setReps} step={1} min={1} />
         </div>
-        <Stepper
-          label="Mi peso (opcional)"
-          value={weight}
-          onChange={setWeight}
-          step={WEIGHT_STEP}
-          unit="kg"
-          allowEmpty
-          decimal
-        />
-        <Stepper
-          label="Peso pareja (opcional)"
-          value={partnerWeight}
-          onChange={setPartnerWeight}
-          step={WEIGHT_STEP}
-          unit="kg"
-          allowEmpty
-          decimal
-        />
+        <div className="grid grid-cols-2 gap-3">
+          {(
+            [
+              ['me', weight, setWeight],
+              ['partner', partnerWeight, setPartnerWeight],
+            ] as const
+          ).map(([person, value, set]) => (
+            <div key={person}>
+              <span className="mb-2 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted uppercase">
+                <PersonDot person={person} /> {person === 'me' ? 'Mi peso' : 'Peso pareja'}
+              </span>
+              <WeightInput person={person} exerciseName={name || 'nuevo ejercicio'} value={value} onChange={set} />
+            </div>
+          ))}
+        </div>
         <div className="flex gap-3 pt-1">
           {exercise && onDelete && (
             <Button variant="danger" size="lg" onClick={onDelete} aria-label="Borrar ejercicio">

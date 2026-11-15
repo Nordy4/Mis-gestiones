@@ -7,15 +7,13 @@ import { NotFoundScreen } from '@/core/components/NotFoundScreen';
 import { formatDateLong, formatDateShort, formatKg } from '@/core/lib/format';
 import { useExercise, useRoutine, useWeightHistory } from '../data/hooks';
 import { PERSON_LABEL, type Person, type WeightLogEntry } from '../data/types';
-import { PersonDot } from '../components/PersonWeights';
+import { PERSON_COLOR, PersonDot } from '../components/PersonWeights';
 import type { ProgressRow, ProgressSeries } from '../components/ProgressChart';
 import { gymPaths } from '../paths';
 
 // Recharts pesa bastante: se carga solo al abrir la evolución.
 const ProgressChart = lazy(() => import('../components/ProgressChart'));
 
-// Mismos colores que --color-me / --color-partner (validados para daltonismo).
-const PERSON_COLOR: Record<Person, string> = { me: '#3987e5', partner: '#d95926' };
 
 const valueOf = (e: WeightLogEntry, p: Person) => (p === 'me' ? e.weight : e.partnerWeight);
 

@@ -3,6 +3,9 @@ import { PERSON_LABEL, type Person } from '../data/types';
 
 const DOT: Record<Person, string> = { me: 'bg-me', partner: 'bg-partner' };
 
+/** Mismos colores que --color-me / --color-partner (para Recharts, que necesita valores). */
+export const PERSON_COLOR: Record<Person, string> = { me: '#9d7bf5', partner: '#8ccbf7' };
+
 /** Punto de color que identifica a la persona (siempre acompañado de su nombre). */
 export function PersonDot({ person, className = '' }: { person: Person; className?: string }) {
   return <span aria-hidden className={`inline-block size-2.5 shrink-0 rounded-full ${DOT[person]} ${className}`} />;
