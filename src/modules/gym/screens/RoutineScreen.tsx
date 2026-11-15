@@ -122,6 +122,9 @@ export function RoutineScreen() {
   const groups = groupBySection(exercises, sections);
   const editingSectionIndex = sections.findIndex((s) => s.id === editingSectionId);
   const editingSection = editingSectionIndex >= 0 ? sections[editingSectionIndex] : null;
+  // Posición del ejercicio en edición dentro de su grupo (para Subir / Bajar).
+  const editingGroup = editing ? groups.find((g) => g.exercises.some((e) => e.id === editing.id)) : undefined;
+  const editingIndex = editingGroup?.exercises.findIndex((e) => e.id === editing?.id) ?? -1;
 
   const footer = !active ? (
     <Button
@@ -272,6 +275,9 @@ export function RoutineScreen() {
         open={editing !== null}
         exercise={editing}
         sections={sections}
+        canMoveUp={editingIndex > 0}
+        canMoveDown={!!editingGroup && editingIndex >= 0 && editingIndex < editingGroup.exercises.length - 1}
+        onMove={(dir) => editing && gymRepo.moveExercise(editing.id, dir)}
         onSubmit={(input) => gymRepo.updateExercise(editing!.id, input)}
         onDelete={() => {
           setDeletingExercise(editing);

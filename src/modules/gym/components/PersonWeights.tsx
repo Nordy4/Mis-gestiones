@@ -27,7 +27,7 @@ interface Props {
   showEmpty?: boolean;
 }
 
-/** Pastillas "● Yo 50 kg   ● Pareja 30 kg" para listas de ejercicios. */
+/** Pastillas "● Goyo 50 kg   ● Bebe 30 kg" para listas de ejercicios. */
 export function WeightBadges({ weight, partnerWeight, showEmpty }: Props) {
   const items: [Person, number][] = [];
   if (weight != null) items.push(['me', weight]);

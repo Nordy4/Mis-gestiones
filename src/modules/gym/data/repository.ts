@@ -42,6 +42,8 @@ export interface GymRepository {
   /** Cambia solo los pesos actuales y los apunta en el historial de hoy. */
   setWeights(id: string, weight: number | null, partnerWeight: number | null): Promise<void>;
   archiveExercise(id: string): Promise<void>;
+  /** Mueve el ejercicio una posición arriba (-1) o abajo (+1) dentro de su sección. */
+  moveExercise(id: string, direction: -1 | 1): Promise<void>;
   /** Historial de pesos de un ejercicio, del más antiguo al más reciente. */
   weightHistory(exerciseId: string): Promise<WeightLogEntry[]>;
 

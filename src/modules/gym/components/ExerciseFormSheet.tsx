@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import { Sheet } from '@/core/components/Sheet';
 import { Field } from '@/core/components/Field';
 import { Button } from '@/core/components/Button';
 import { Stepper } from '@/core/components/Stepper';
-import { DEFAULT_REPS, DEFAULT_SETS, type Exercise, type ExerciseInput, type Section } from '../data/types';
+import {
+  DEFAULT_REPS,
+  DEFAULT_SETS,
+  PERSON_LABEL,
+  type Exercise,
+  type ExerciseInput,
+  type Section,
+} from '../data/types';
 import { PersonDot } from './PersonWeights';
 import { WeightInput } from './WeightInput';
 
@@ -17,6 +24,10 @@ interface Props {
   defaultSectionId?: string | null;
   onSubmit: (input: ExerciseInput) => void | Promise<void>;
   onDelete?: () => void;
+  /** Reordenar dentro de su sección (solo al editar). Se aplica al momento. */
+  onMove?: (direction: -1 | 1) => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   onClose: () => void;
 }
 
@@ -27,6 +38,9 @@ export function ExerciseFormSheet({
   defaultSectionId = null,
   onSubmit,
   onDelete,
+  onMove,
+  canMoveUp,
+  canMoveDown,
   onClose,
 }: Props) {
   const [name, setName] = useState('');
@@ -109,12 +123,27 @@ export function ExerciseFormSheet({
           ).map(([person, value, set]) => (
             <div key={person}>
               <span className="mb-2 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted uppercase">
-                <PersonDot person={person} /> {person === 'me' ? 'Mi peso' : 'Peso pareja'}
+                <PersonDot person={person} /> Peso {PERSON_LABEL[person]}
               </span>
               <WeightInput person={person} exerciseName={name || 'nuevo ejercicio'} value={value} onChange={set} />
             </div>
           ))}
         </div>
+        {exercise && onMove && (
+          <div>
+            <span className="mb-1.5 block text-xs font-medium tracking-wide text-muted uppercase">
+              Posición en la sección
+            </span>
+            <div className="flex gap-2">
+              <Button variant="secondary" disabled={!canMoveUp} onClick={() => onMove(-1)} className="flex-1">
+                <ArrowUp className="size-4" /> Subir
+              </Button>
+              <Button variant="secondary" disabled={!canMoveDown} onClick={() => onMove(1)} className="flex-1">
+                <ArrowDown className="size-4" /> Bajar
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="flex gap-3 pt-1">
           {exercise && onDelete && (
             <Button variant="danger" size="lg" onClick={onDelete} aria-label="Borrar ejercicio">

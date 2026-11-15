@@ -106,7 +106,7 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
   pareja a la derecha; debajo "● 45 kg · 13 nov" / "● sin registro" (último registro de cada uno,
   enlaza a la evolución) y papelera. Filas separadas por líneas, sin tarjetas. Tocar el nombre
   abre el formulario de edición.
-- **Dos personas**: `Person = 'me' | 'partner'`, etiquetas en `PERSON_LABEL`. Colores: **morado
+- **Dos personas**: `Person = 'me' | 'partner'`. En la UI se llaman **Goyo** (me) y **Bebe** (partner): usar siempre `PERSON_LABEL`, nunca "Yo"/"Pareja" a mano. Colores: **morado
   `--color-me` #9d7bf5 (yo)** y **azul pastel `--color-partner` #8ccbf7 (pareja)**, elegidos por el
   usuario; `PERSON_COLOR` repite los valores para Recharts. Siempre con su nombre al lado
   (`PersonDot` + texto o `sr-only`), nunca solo color.
@@ -118,7 +118,7 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
 - **Calendario** (`CalendarScreen`): mes con los días entrenados, total del mes, y detalle del día
   (rutina, hora de inicio, duración, borrar). Usa `useRoutineNames` para incluir rutinas borradas.
 - Pantalla de rutina: en la cabecera, iconos añadir sección (FolderPlus) · renombrar · borrar
-  rutina. Cada sección tiene iconos "+" (añadir ejercicio en esa sección) y lápiz (editar). Solo si
+  rutina. Cada sección tiene iconos "+" (añadir ejercicio en esa sección) y lápiz (editar). Los ejercicios se reordenan dentro de su sección con Subir/Bajar en el formulario de edición (`moveExercise`, intercambia valores de `order` solo dentro del grupo). Solo si
   la rutina no tiene secciones aparece el botón "Añadir ejercicio" al final.
 - Secciones: los ejercicios sin sección van arriba; luego cada sección por `order`
   (`lib/grouping.ts`). Borrar una sección deja sus ejercicios sin sección.

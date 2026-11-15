@@ -182,6 +182,28 @@ export const dexieGymRepository: GymRepository = {
     await exercises().update(id, { archivedAt: now, updatedAt: now });
   },
 
+  async moveExercise(id, direction) {
+    await db.transaction('rw', exercises(), sections(), async () => {
+      const ex = await exercises().get(id);
+      if (!ex) return;
+      // Misma agrupación que la pantalla: sección inexistente o borrada = sin sección.
+      const live = new Set((await activeSections(ex.routineId)).map((s) => s.id));
+      const groupOf = (e: Exercise) => (e.sectionId && live.has(e.sectionId) ? e.sectionId : null);
+      const all = await exercises().where('routineId').equals(ex.routineId).toArray();
+      const group = all
+        .filter((e) => isActive(e) && groupOf(e) === groupOf(ex))
+        .sort((a, b) => a.order - b.order);
+      const i = group.findIndex((e) => e.id === id);
+      const j = i + direction;
+      if (i < 0 || j < 0 || j >= group.length) return;
+      // Reparte los mismos valores de `order` en el nuevo orden: no afecta a otras secciones.
+      const orders = group.map((e) => e.order);
+      [group[i], group[j]] = [group[j], group[i]];
+      const now = nowIso();
+      await Promise.all(group.map((e, k) => (e.order === orders[k] ? null : exercises().update(e.id, { order: orders[k], updatedAt: now }))));
+    });
+  },
+
   async weightHistory(exerciseId) {
     return weightLog()
       .where('[exerciseId+date]')

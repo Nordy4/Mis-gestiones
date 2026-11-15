@@ -39,7 +39,7 @@ export function WeightInput({ person, value, onChange, exerciseName }: Props) {
       <input
         inputMode="decimal"
         enterKeyHint="done"
-        aria-label={`${person === 'me' ? 'Mi peso' : `Peso ${PERSON_LABEL.partner.toLowerCase()}`} · ${exerciseName}, en kg`}
+        aria-label={`Peso ${PERSON_LABEL[person]} · ${exerciseName}, en kg`}
         placeholder="0"
         value={text}
         onFocus={(e) => {

@@ -80,10 +80,11 @@ export interface GymExport {
   weightLog: WeightLogEntry[];
 }
 
-/** Quién hizo el peso: yo o la pareja. */
+/** Quién hizo el peso: yo (Goyo) o la pareja (Bebe). */
 export type Person = 'me' | 'partner';
 
-export const PERSON_LABEL: Record<Person, string> = { me: 'Yo', partner: 'Pareja' };
+/** Nombres que se muestran en TODA la app. No escribir "Yo"/"Pareja" a mano: usar esto. */
+export const PERSON_LABEL: Record<Person, string> = { me: 'Goyo', partner: 'Bebe' };
 
 export const DEFAULT_SETS = 3;
 export const DEFAULT_REPS = 10;
