@@ -1,0 +1,49 @@
+import { modules } from '@/modules/registry';
+import { coreSchema, db, metaTable } from './db';
+
+/**
+ * Versión del esquema de IndexedDB.
+ * SÚBELA en 1 cada vez que cambies el `schema` de cualquier módulo
+ * (tabla nueva, índice nuevo...). Dexie calcula la migración solo.
+ */
+export const DB_VERSION = 1;
+
+let initialized: Promise<void> | null = null;
+
+function buildSchema(): Record<string, string> {
+  const schema: Record<string, string> = { ...coreSchema };
+  for (const mod of modules) {
+    for (const [table, def] of Object.entries(mod.data?.schema ?? {})) {
+      if (!table.startsWith(`${mod.id}_`)) {
+        throw new Error(`La tabla "${table}" del módulo "${mod.id}" debe empezar por "${mod.id}_"`);
+      }
+      if (table in schema) throw new Error(`Tabla duplicada: ${table}`);
+      schema[table] = def;
+    }
+  }
+  return schema;
+}
+
+/** Declara las tablas, abre la BD y carga los datos iniciales de cada módulo (una vez). */
+export function initDatabase(): Promise<void> {
+  initialized ??= (async () => {
+    db.version(DB_VERSION).stores(buildSchema());
+    await db.open();
+
+    for (const mod of modules) {
+      if (!mod.data?.seed) continue;
+      const key = `seeded:${mod.id}`;
+      if (await metaTable().get(key)) continue;
+      await mod.data.seed();
+      await metaTable().put({ key, value: new Date().toISOString() });
+    }
+
+    // Pide al navegador que no borre los datos si falta espacio.
+    try {
+      await navigator.storage?.persist?.();
+    } catch {
+      /* no disponible: no pasa nada */
+    }
+  })();
+  return initialized;
+}
