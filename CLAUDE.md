@@ -88,11 +88,23 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
 
 - Rutas (`gym/paths.ts`): `/gym`, `/gym/rutina/:routineId`, `/gym/rutina/:routineId/entrenar`,
   `/gym/ejercicio/:exerciseId` (estadísticas).
-- Tablas: `gym_routines`, `gym_exercises` (por rutina), `gym_workouts` (uno por rutina y día),
+- Tablas: `gym_routines`, `gym_sections` (bloques con nombre libre dentro de una rutina),
+  `gym_exercises` (por rutina; `sectionId` opcional), `gym_workouts` (uno por rutina y día),
   `gym_sets` (una fila por serie; se guarda al pulsar, sin botón de "guardar entreno").
-- Peso prerrellenado: última serie de hoy > última serie con peso del ejercicio > `initialWeight`.
-- Estadísticas: peso máximo por sesión (o reps máximas si el ejercicio no tiene peso), récord
-  (más peso, desempata reps) e historial. Recharts se carga en diferido (`lazy`).
+- **Dos personas por serie**: cada serie guarda `weight` (yo) y `partnerWeight` (pareja) con las
+  mismas `reps`. Cualquiera de los dos puede ser null. `Person = 'me' | 'partner'`, etiquetas en
+  `PERSON_LABEL`, colores `--color-me` (#3987e5) / `--color-partner` (#d95926), validados para
+  daltonismo; siempre acompañados del nombre (`PersonDot` + texto), nunca solo color.
+- Secciones: los ejercicios sin sección van arriba; luego cada sección por `order`
+  (`lib/grouping.ts` → `groupBySection` / `displayOrder`). Borrar una sección deja sus ejercicios
+  sin sección.
+- Campos añadidos después de la v1 (`sectionId`, `initialPartnerWeight`, `partnerWeight`) son
+  opcionales en los tipos: los datos antiguos no los tienen. Trátalos con `?? null`.
+- Peso prerrellenado (cada persona por separado): última serie de hoy > última serie con peso
+  del ejercicio > peso inicial.
+- Estadísticas: peso máximo por sesión con una línea por persona (o reps máximas si el ejercicio
+  no tiene peso), récord por persona (más peso, desempata reps) e historial en tabla.
+  Recharts se carga en diferido (`lazy`).
 
 ## Despliegue
 

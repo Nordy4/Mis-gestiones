@@ -2,23 +2,33 @@ import Dexie from 'dexie';
 import { db } from '@/core/db/db';
 import { newId, nowIso } from '@/core/lib/ids';
 import type { GymRepository } from './repository';
-import type { Exercise, ExerciseSession, GymExport, Routine, Workout, WorkoutSet } from './types';
+import type { Exercise, ExerciseSession, GymExport, Routine, Section, Workout, WorkoutSet } from './types';
 import { seedRoutines } from './seed';
 
 const routines = () => db.table<Routine, string>('gym_routines');
+const sections = () => db.table<Section, string>('gym_sections');
 const exercises = () => db.table<Exercise, string>('gym_exercises');
 const workouts = () => db.table<Workout, string>('gym_workouts');
 const sets = () => db.table<WorkoutSet, string>('gym_sets');
 
-const allTables = () => [routines(), exercises(), workouts(), sets()];
+const allTables = () => [routines(), sections(), exercises(), workouts(), sets()];
 
 const isActive = (x: { archivedAt?: string | null }) => !x.archivedAt;
 const cleanName = (s: string) => s.trim().replace(/\s+/g, ' ');
+const maxNumber = (xs: (number | null | undefined)[]) => {
+  const nums = xs.filter((x): x is number => typeof x === 'number');
+  return nums.length ? Math.max(...nums) : null;
+};
 
 function setsOfExercise(exerciseId: string) {
   return sets()
     .where('[exerciseId+createdAt]')
     .between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey]);
+}
+
+async function activeSections(routineId: string) {
+  const list = await sections().where('routineId').equals(routineId).toArray();
+  return list.filter(isActive).sort((a, b) => a.order - b.order);
 }
 
 export const dexieGymRepository: GymRepository = {
@@ -51,9 +61,58 @@ export const dexieGymRepository: GymRepository = {
 
   async archiveRoutine(id) {
     const now = nowIso();
-    await db.transaction('rw', routines(), exercises(), async () => {
+    await db.transaction('rw', routines(), sections(), exercises(), async () => {
       await routines().update(id, { archivedAt: now, updatedAt: now });
+      await sections().where('routineId').equals(id).modify({ archivedAt: now, updatedAt: now });
       await exercises().where('routineId').equals(id).modify({ archivedAt: now, updatedAt: now });
+    });
+  },
+
+  // ---------- Secciones ----------
+  listSections: (routineId) => activeSections(routineId),
+
+  async createSection(routineId, name) {
+    const existing = await sections().where('routineId').equals(routineId).toArray();
+    const now = nowIso();
+    const section: Section = {
+      id: newId(),
+      routineId,
+      name: cleanName(name),
+      order: existing.reduce((m, s) => Math.max(m, s.order), -1) + 1,
+      createdAt: now,
+      updatedAt: now,
+      archivedAt: null,
+    };
+    await sections().add(section);
+    return section;
+  },
+
+  async renameSection(id, name) {
+    await sections().update(id, { name: cleanName(name), updatedAt: nowIso() });
+  },
+
+  async moveSection(id, direction) {
+    await db.transaction('rw', sections(), async () => {
+      const section = await sections().get(id);
+      if (!section) return;
+      const list = await activeSections(section.routineId);
+      const i = list.findIndex((s) => s.id === id);
+      const j = i + direction;
+      if (i < 0 || j < 0 || j >= list.length) return;
+      // Renumera para que el orden quede compacto y sin empates.
+      [list[i], list[j]] = [list[j], list[i]];
+      const now = nowIso();
+      await Promise.all(list.map((s, idx) => sections().update(s.id, { order: idx, updatedAt: now })));
+    });
+  },
+
+  async archiveSection(id) {
+    const now = nowIso();
+    await db.transaction('rw', sections(), exercises(), async () => {
+      await sections().update(id, { archivedAt: now, updatedAt: now });
+      await exercises()
+        .filter((e) => e.sectionId === id)
+        .modify({ sectionId: null, updatedAt: now });
     });
   },
 
@@ -74,10 +133,12 @@ export const dexieGymRepository: GymRepository = {
     const exercise: Exercise = {
       id: newId(),
       routineId,
+      sectionId: input.sectionId,
       name: cleanName(input.name),
       targetSets: input.targetSets,
       targetReps: input.targetReps,
       initialWeight: input.initialWeight,
+      initialPartnerWeight: input.initialPartnerWeight,
       order: existing.reduce((m, e) => Math.max(m, e.order), -1) + 1,
       createdAt: now,
       updatedAt: now,
@@ -147,7 +208,7 @@ export const dexieGymRepository: GymRepository = {
     return list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   },
 
-  async addSet(workoutId, exerciseId, weight, reps) {
+  async addSet(workoutId, exerciseId, weight, partnerWeight, reps) {
     return db.transaction('rw', sets(), workouts(), async () => {
       const previous = await sets().where('workoutId').equals(workoutId).toArray();
       const now = nowIso();
@@ -157,6 +218,7 @@ export const dexieGymRepository: GymRepository = {
         exerciseId,
         setIndex: previous.filter((s) => s.exerciseId === exerciseId).length,
         weight,
+        partnerWeight,
         reps,
         createdAt: now,
         updatedAt: now,
@@ -172,14 +234,16 @@ export const dexieGymRepository: GymRepository = {
     await sets().delete(id);
   },
 
-  async lastWeight(exerciseId) {
-    const last = await setsOfExercise(exerciseId)
-      .reverse()
-      .filter((s) => s.weight !== null)
-      .first();
-    if (last) return last.weight;
+  async lastWeights(exerciseId) {
+    const history = await setsOfExercise(exerciseId).reverse().toArray();
+    const lastMine = history.find((s) => s.weight != null);
+    const lastPartner = history.find((s) => s.partnerWeight != null);
+    if (lastMine && lastPartner) return { weight: lastMine.weight, partnerWeight: lastPartner.partnerWeight ?? null };
     const exercise = await exercises().get(exerciseId);
-    return exercise?.initialWeight ?? null;
+    return {
+      weight: lastMine ? lastMine.weight : (exercise?.initialWeight ?? null),
+      partnerWeight: lastPartner ? (lastPartner.partnerWeight ?? null) : (exercise?.initialPartnerWeight ?? null),
+    };
   },
 
   // ---------- Estadísticas ----------
@@ -196,11 +260,11 @@ export const dexieGymRepository: GymRepository = {
     for (const w of ws) {
       if (!w) continue;
       const wSets = byWorkout.get(w.id)!;
-      const weights = wSets.map((s) => s.weight).filter((x): x is number => x !== null);
       sessions.push({
         workout: w,
         sets: wSets,
-        topWeight: weights.length ? Math.max(...weights) : null,
+        topWeight: maxNumber(wSets.map((s) => s.weight)),
+        topPartnerWeight: maxNumber(wSets.map((s) => s.partnerWeight)),
       });
     }
     return sessions.sort((a, b) => a.workout.date.localeCompare(b.workout.date));
@@ -208,9 +272,10 @@ export const dexieGymRepository: GymRepository = {
 
   // ---------- Copia de seguridad ----------
   async exportAll() {
-    const [r, e, w, s] = await Promise.all(allTables().map((t) => t.toArray()));
+    const [r, sec, e, w, s] = await Promise.all(allTables().map((t) => t.toArray()));
     return {
       routines: r as Routine[],
+      sections: sec as Section[],
       exercises: e as Exercise[],
       workouts: w as Workout[],
       sets: s as WorkoutSet[],
@@ -221,6 +286,7 @@ export const dexieGymRepository: GymRepository = {
     await db.transaction('rw', allTables(), async () => {
       await Promise.all(allTables().map((t) => t.clear()));
       await routines().bulkAdd(data.routines);
+      await sections().bulkAdd(data.sections ?? []);
       await exercises().bulkAdd(data.exercises);
       await workouts().bulkAdd(data.workouts);
       await sets().bulkAdd(data.sets);
@@ -238,10 +304,7 @@ export const dexieGymRepository: GymRepository = {
           r.exercises.map((ex, ei) => ({
             id: newId(),
             routineId,
-            name: ex.name,
-            targetSets: ex.targetSets,
-            targetReps: ex.targetReps,
-            initialWeight: ex.initialWeight,
+            ...ex,
             order: ei,
             createdAt: now,
             updatedAt: now,

@@ -17,6 +17,8 @@ export function parseGymExport(data: unknown): GymExport {
   const d = data as Record<string, unknown>;
   return {
     routines: assertArray(d.routines, 'routines') as GymExport['routines'],
+    // Las copias anteriores a las secciones no traen este campo.
+    sections: (d.sections === undefined ? [] : assertArray(d.sections, 'sections')) as GymExport['sections'],
     exercises: assertArray(d.exercises, 'exercises') as GymExport['exercises'],
     workouts: assertArray(d.workouts, 'workouts') as GymExport['workouts'],
     sets: assertArray(d.sets, 'sets') as GymExport['sets'],

@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { formatKg, parseDecimal } from '@/core/lib/format';
 
 interface StepperProps {
-  label: string;
+  label: ReactNode;
+  /** Texto accesible del campo (obligatorio si `label` no es texto). */
+  ariaLabel?: string;
   /** null = vacío */
   value: number | null;
   onChange: (value: number | null) => void;
@@ -18,6 +20,7 @@ interface StepperProps {
 /** Valor numérico con botones grandes −/+ y campo editable en medio. */
 export function Stepper({
   label,
+  ariaLabel,
   value,
   onChange,
   step,
@@ -26,6 +29,7 @@ export function Stepper({
   allowEmpty,
   decimal,
 }: StepperProps) {
+  const name = ariaLabel ?? (typeof label === 'string' ? label : 'Valor');
   const [text, setText] = useState(value === null ? '' : formatKg(value));
 
   // Sincroniza el texto cuando el valor cambia desde fuera (botones, prerrelleno).
@@ -54,14 +58,14 @@ export function Stepper({
 
   return (
     <div>
-      <span className="mb-1.5 block text-center text-xs font-medium tracking-wide text-muted uppercase">
+      <span className="mb-1.5 flex justify-center text-xs font-medium tracking-wide text-muted uppercase">
         {label}
       </span>
       <div className="flex items-center gap-2">
         <button
           type="button"
           className={btn}
-          aria-label={`Restar ${formatKg(step)} ${unit ?? ''}`}
+          aria-label={`${name}: restar ${formatKg(step)} ${unit ?? ''}`}
           onClick={() => bump(-step)}
           disabled={value === null || value <= min}
         >
@@ -70,7 +74,7 @@ export function Stepper({
         <div className="relative min-w-0 flex-1">
           <input
             inputMode={decimal ? 'decimal' : 'numeric'}
-            aria-label={label}
+            aria-label={name}
             value={text}
             placeholder="–"
             onChange={(e) => setText(e.target.value)}
@@ -88,7 +92,7 @@ export function Stepper({
         <button
           type="button"
           className={btn}
-          aria-label={`Sumar ${formatKg(step)} ${unit ?? ''}`}
+          aria-label={`${name}: sumar ${formatKg(step)} ${unit ?? ''}`}
           onClick={() => bump(step)}
         >
           <Plus className="size-6" />

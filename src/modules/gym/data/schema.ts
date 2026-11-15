@@ -4,6 +4,7 @@
  */
 export const gymSchema = {
   gym_routines: 'id, order',
+  gym_sections: 'id, routineId',
   gym_exercises: 'id, routineId, [routineId+order]',
   gym_workouts: 'id, routineId, date, [routineId+date]',
   gym_sets: 'id, workoutId, exerciseId, [exerciseId+createdAt]',

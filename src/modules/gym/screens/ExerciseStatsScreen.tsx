@@ -6,43 +6,51 @@ import { EmptyState } from '@/core/components/EmptyState';
 import { NotFoundScreen } from '@/core/components/NotFoundScreen';
 import { formatDateLong, formatDateShort, formatKg } from '@/core/lib/format';
 import { useExercise, useExerciseHistory, useRoutine } from '../data/hooks';
-import type { ExerciseSession, WorkoutSet } from '../data/types';
+import { PERSON_LABEL, type ExerciseSession, type Person } from '../data/types';
+import { PersonDot } from '../components/PersonWeights';
+import { SetsTable } from '../components/SetsTable';
+import type { ProgressRow, ProgressSeries } from '../components/ProgressChart';
 import { gymPaths } from '../paths';
 
 // Recharts pesa bastante: se carga solo al abrir estadísticas.
 const ProgressChart = lazy(() => import('../components/ProgressChart'));
 
+// Mismos colores que --color-me / --color-partner (validados para daltonismo).
+const PERSON_COLOR: Record<Person, string> = { me: '#3987e5', partner: '#d95926' };
+
 interface BestSet {
-  set: WorkoutSet;
+  setId: string;
+  weight: number;
+  reps: number;
   date: string;
 }
 
-/** Mejor serie: más peso; a igual peso, más reps. Si no hay pesos, más reps. */
-function findRecord(history: ExerciseSession[], byWeight: boolean): BestSet | null {
+/** Mejor serie de una persona: más peso; a igual peso, más reps. */
+function findRecord(history: ExerciseSession[], person: Person): BestSet | null {
   let best: BestSet | null = null;
   for (const s of history) {
     for (const set of s.sets) {
-      if (!best) {
-        best = { set, date: s.workout.date };
-        continue;
+      const w = person === 'me' ? set.weight : set.partnerWeight;
+      if (w == null) continue;
+      if (!best || w > best.weight || (w === best.weight && set.reps > best.reps)) {
+        best = { setId: set.id, weight: w, reps: set.reps, date: s.workout.date };
       }
-      const a = set;
-      const b = best.set;
-      const better = byWeight
-        ? (a.weight ?? -1) > (b.weight ?? -1) || ((a.weight ?? -1) === (b.weight ?? -1) && a.reps > b.reps)
-        : a.reps > b.reps;
-      if (better) best = { set, date: s.workout.date };
     }
   }
   return best;
 }
 
-const setLabel = (s: WorkoutSet) => (s.weight === null ? `${s.reps} reps` : `${formatKg(s.weight)}×${s.reps}`);
+interface StatTileProps {
+  label: React.ReactNode;
+  value: string;
+  detail?: string;
+  className?: string;
+}
 
-function StatTile({ label, value, detail }: { label: string; value: string; detail?: string }) {
+function StatTile({ label, value, detail, className = '' }: StatTileProps) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-surface p-3">
-      <div className="text-xs text-muted">{label}</div>
+    <div className={`rounded-2xl border border-border/60 bg-surface p-3 ${className}`}>
+      <div className="flex items-center gap-1.5 text-xs text-muted">{label}</div>
       <div className="mt-0.5 text-xl font-bold tabular-nums">{value}</div>
       {detail && <div className="text-xs text-muted">{detail}</div>}
     </div>
@@ -55,23 +63,31 @@ export function ExerciseStatsScreen() {
   const routine = useRoutine(exercise?.routineId);
   const history = useExerciseHistory(exerciseId);
 
-  const byWeight = useMemo(() => (history ?? []).some((s) => s.topWeight !== null), [history]);
+  const { people, rows, series, byWeight } = useMemo(() => {
+    const h = history ?? [];
+    const people: Person[] = [];
+    if (h.some((s) => s.topWeight !== null)) people.push('me');
+    if (h.some((s) => s.topPartnerWeight !== null)) people.push('partner');
+    const byWeight = people.length > 0;
 
-  const points = useMemo(
-    () =>
-      (history ?? []).map((s) => ({
-        date: s.workout.date,
-        value: byWeight ? (s.topWeight ?? 0) : Math.max(...s.sets.map((x) => x.reps)),
-      })),
-    [history, byWeight],
-  );
+    const rows = h.map(
+      (s): ProgressRow =>
+        byWeight
+          ? { date: s.workout.date, me: s.topWeight, partner: s.topPartnerWeight }
+          : { date: s.workout.date, reps: Math.max(...s.sets.map((x) => x.reps)) },
+    );
+    const series: ProgressSeries[] = byWeight
+      ? people.map((p) => ({ key: p, label: PERSON_LABEL[p], color: PERSON_COLOR[p] }))
+      : [{ key: 'reps', label: 'Reps', color: PERSON_COLOR.me }];
+    return { people, rows, series, byWeight };
+  }, [history]);
 
   if (exercise === null) return <NotFoundScreen />;
   if (!exercise || !history) return null;
 
-  const BestSet = findRecord(history, byWeight);
-  const last = history.at(-1);
-  const unit = byWeight ? 'kg' : 'reps';
+  const records = people.map((p) => ({ person: p, best: findRecord(history, p) }));
+  const recordSetIds = new Set(records.map((r) => r.best?.setId).filter(Boolean));
+  const maxReps = Math.max(0, ...history.flatMap((s) => s.sets.map((x) => x.reps)));
 
   return (
     <Screen title={exercise.name} subtitle={routine?.name} backTo={gymPaths.routine(exercise.routineId)}>
@@ -81,31 +97,40 @@ export function ExerciseStatsScreen() {
         </EmptyState>
       ) : (
         <div className="space-y-5">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
+            {byWeight ? (
+              records.map(({ person, best }) => (
+                <StatTile
+                  key={person}
+                  label={
+                    <>
+                      <PersonDot person={person} /> Récord {PERSON_LABEL[person]}
+                    </>
+                  }
+                  value={best ? `${formatKg(best.weight)} kg` : '–'}
+                  detail={best ? `${best.reps} reps · ${formatDateShort(best.date)}` : undefined}
+                />
+              ))
+            ) : (
+              <StatTile label="Récord" value={`${maxReps} reps`} />
+            )}
             <StatTile
-              label="Récord"
-              value={BestSet ? (byWeight ? `${formatKg(BestSet.set.weight)} kg` : `${BestSet.set.reps}`) : '–'}
-              detail={BestSet ? `${BestSet.set.reps} reps · ${formatDateShort(BestSet.date)}` : undefined}
+              className={records.length === 2 ? 'col-span-2' : ''}
+              label="Sesiones"
+              value={String(history.length)}
+              detail={`Última: ${formatDateShort(history.at(-1)!.workout.date)}`}
             />
-            <StatTile
-              label="Último"
-              value={last ? (byWeight ? `${formatKg(last.topWeight)} kg` : `${points.at(-1)?.value}`) : '–'}
-              detail={last ? formatDateShort(last.workout.date) : undefined}
-            />
-            <StatTile label="Sesiones" value={String(history.length)} />
           </div>
 
           <section className="rounded-2xl border border-border/60 bg-surface p-3">
             <h2 className="mb-2 px-1 text-sm font-semibold">
               {byWeight ? 'Peso máximo por sesión (kg)' : 'Reps máximas por sesión'}
             </h2>
-            {points.length < 2 ? (
-              <p className="px-1 py-6 text-center text-sm text-muted">
-                Con dos sesiones o más verás aquí la gráfica.
-              </p>
+            {rows.length < 2 ? (
+              <p className="px-1 py-6 text-center text-sm text-muted">Con dos sesiones o más verás aquí la gráfica.</p>
             ) : (
               <Suspense fallback={<div className="h-56" />}>
-                <ProgressChart data={points} unit={unit} />
+                <ProgressChart data={rows} series={series} unit={byWeight ? 'kg' : 'reps'} />
               </Suspense>
             )}
           </section>
@@ -113,31 +138,19 @@ export function ExerciseStatsScreen() {
           <section>
             <h2 className="mb-2 text-sm font-semibold">Historial</h2>
             <ul className="grid gap-2">
-              {[...history].reverse().map((s) => {
-                const isRecordSession = BestSet && s.sets.some((x) => x.id === BestSet.set.id);
-                return (
-                  <li key={s.workout.id} className="rounded-2xl border border-border/60 bg-surface p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium">{formatDateLong(s.workout.date)}</span>
-                      {isRecordSession && (
-                        <span className="flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-300">
-                          <Trophy className="size-3.5" /> Récord
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {s.sets.map((set) => (
-                        <span
-                          key={set.id}
-                          className="rounded-full bg-surface-2 px-2.5 py-1 text-sm tabular-nums"
-                        >
-                          {setLabel(set)}
-                        </span>
-                      ))}
-                    </div>
-                  </li>
-                );
-              })}
+              {[...history].reverse().map((s) => (
+                <li key={s.workout.id} className="rounded-2xl border border-border/60 bg-surface p-3">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{formatDateLong(s.workout.date)}</span>
+                    {s.sets.some((x) => recordSetIds.has(x.id)) && (
+                      <span className="flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-300">
+                        <Trophy className="size-3.5" /> Récord
+                      </span>
+                    )}
+                  </div>
+                  <SetsTable sets={s.sets} />
+                </li>
+              ))}
             </ul>
           </section>
         </div>

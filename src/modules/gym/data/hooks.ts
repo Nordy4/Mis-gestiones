@@ -34,8 +34,11 @@ export const useWorkout = (routineId: string | undefined, date: string) =>
 export const useWorkoutSets = (workoutId: string | undefined | null) =>
   useLiveQuery(() => (workoutId ? gymRepo.listSets(workoutId) : []), [workoutId]);
 
-export const useLastWeight = (exerciseId: string) =>
-  useLiveQuery(() => gymRepo.lastWeight(exerciseId), [exerciseId]);
+export const useSections = (routineId: string | undefined) =>
+  useLiveQuery(() => (routineId ? gymRepo.listSections(routineId) : []), [routineId]);
+
+export const useLastWeights = (exerciseId: string) =>
+  useLiveQuery(() => gymRepo.lastWeights(exerciseId), [exerciseId]);
 
 export const useExerciseHistory = (exerciseId: string | undefined) =>
   useLiveQuery(() => (exerciseId ? gymRepo.exerciseHistory(exerciseId) : []), [exerciseId]);

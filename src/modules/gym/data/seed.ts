@@ -2,9 +2,11 @@ import { DEFAULT_REPS, DEFAULT_SETS, type ExerciseInput } from './types';
 
 const ex = (name: string, initialWeight: number | null = null): ExerciseInput => ({
   name,
+  sectionId: null,
   targetSets: DEFAULT_SETS,
   targetReps: DEFAULT_REPS,
   initialWeight,
+  initialPartnerWeight: null,
 });
 
 /** Rutinas iniciales. Solo se cargan la primera vez que se abre la app. */
