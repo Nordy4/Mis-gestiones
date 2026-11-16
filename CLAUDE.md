@@ -188,7 +188,7 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
 2. En `data/schema.ts` define sus tablas con prefijo `<id>_`. Implementa `exportData`, `importData`
    (y `seed` si tiene datos iniciales) y añádelos en `data` del `ModuleDefinition`.
 3. En `index.ts` exporta el `ModuleDefinition` (`id`, `name`, `description`, `icon` de lucide,
-   `color` p. ej. `'bg-sky-500/15 text-sky-400'`, `path`, `routes`, `data`).
+   `color` = `'bg-accent/15 text-accent'` (todas las tarjetas usan el acento morado), `path`, `routes`, `data`).
 4. Añádelo al array de `src/modules/registry.ts`.
 5. Si ha añadido tablas, sube `DB_VERSION` en `src/core/db/setup.ts`.
 6. `npm run build` y prueba. El módulo aparece en el inicio y entra solo en la copia de seguridad.

@@ -9,7 +9,7 @@ export const gymModule: ModuleDefinition = {
   name: 'Gym',
   description: 'Rutinas y entrenamientos',
   icon: Dumbbell,
-  color: 'bg-emerald-500/15 text-emerald-400',
+  color: 'bg-accent/15 text-accent',
   path: 'gym',
   routes: gymRoutes,
   data: {

@@ -9,7 +9,7 @@ export const trabajoModule: ModuleDefinition = {
   name: 'Trabajo',
   description: 'Fichar entrada y salida, horas por día',
   icon: Briefcase,
-  color: 'bg-sky-500/15 text-sky-300',
+  color: 'bg-accent/15 text-accent',
   path: 'trabajo',
   routes: trabajoRoutes,
   data: {

@@ -13,7 +13,7 @@ function New-Icon([int]$size, [string]$path, [double]$contentScale, [bool]$round
   $g.Clear([System.Drawing.Color]::Transparent)
 
   $bg = [System.Drawing.ColorTranslator]::FromHtml('#09090b')
-  $accent = [System.Drawing.ColorTranslator]::FromHtml('#10b981')
+  $accent = [System.Drawing.ColorTranslator]::FromHtml('#9d7bf5')
 
   # Fondo
   $bgBrush = New-Object System.Drawing.SolidBrush $bg
@@ -41,7 +41,7 @@ function New-Icon([int]$size, [string]$path, [double]$contentScale, [bool]$round
   $fmt.Alignment = 'Center'
   $fmt.LineAlignment = 'Center'
   $rect = New-Object System.Drawing.RectangleF 0, ([float]($size * 0.01)), $size, $size
-  $g.DrawString('MV', $font, [System.Drawing.Brushes]::White, $rect, $fmt)
+  $g.DrawString('MV', $font, (New-Object System.Drawing.SolidBrush $bg), $rect, $fmt)
 
   $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
   $g.Dispose(); $bmp.Dispose()

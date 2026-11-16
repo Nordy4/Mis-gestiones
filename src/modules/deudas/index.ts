@@ -9,7 +9,7 @@ export const deudasModule: ModuleDefinition = {
   name: 'Deudas',
   description: 'Quién te debe dinero y cuánto',
   icon: HandCoins,
-  color: 'bg-amber-500/15 text-amber-300',
+  color: 'bg-accent/15 text-accent',
   path: 'deudas',
   routes: deudasRoutes,
   data: {

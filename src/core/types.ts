@@ -30,7 +30,7 @@ export interface ModuleDefinition {
   name: string;
   description?: string;
   icon: LucideIcon;
-  /** Clases Tailwind para el color de la tarjeta/icono, p. ej. 'bg-emerald-500/15 text-emerald-400'. */
+  /** Clases Tailwind para el color de la tarjeta/icono, por defecto el acento: 'bg-accent/15 text-accent'. */
   color: string;
   /** Ruta base del módulo, sin barra inicial: 'gym'. */
   path: string;

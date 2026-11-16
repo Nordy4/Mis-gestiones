@@ -8,8 +8,9 @@
   --color-border: #3f3f46;
   --color-text: #fafafa;
   --color-muted: #a1a1aa;
-  --color-accent: #10b981;
-  --color-accent-strong: #059669;
+  /* Acento de toda la app: el mismo morado que identifica a Goyo en Gym. */
+  --color-accent: #9d7bf5;
+  --color-accent-strong: #8160ea;
   --color-danger: #ef4444;
   /* Identidad de persona en Gym: morado (yo) y azul pastel (pareja).
      Separación validada también para daltonismo; van siempre con su etiqueta. */

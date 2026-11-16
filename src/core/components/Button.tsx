@@ -8,7 +8,7 @@ const variants: Record<Variant, string> = {
   secondary: 'bg-surface-2 text-text active:bg-border',
   ghost: 'bg-transparent text-text active:bg-surface-2',
   danger: 'bg-danger/15 text-danger active:bg-danger/25',
-  /** Acción principal "de cierre" (p. ej. fichar salida), distinta de la verde de inicio. */
+  /** Acción principal "de cierre" (p. ej. fichar salida), distinta de la morada de inicio. */
   warning: 'bg-amber-400 text-black active:bg-amber-500',
 };
 
