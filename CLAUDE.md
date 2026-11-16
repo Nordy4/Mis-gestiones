@@ -143,9 +143,16 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
 
 - Pestañas (`TrabajoTabs` sobre `core/components/BottomTabs`): **Fichar** (`/trabajo`) y
   **Calendario** (`/trabajo/calendario?dia=`).
-- Tabla `trabajo_shifts`: `date` (día de la entrada), `startAt`, `endAt` (null = dentro), `note`.
-  **Sin cronómetro**: la duración siempre es `endAt − startAt` (`lib/time.ts`). Solo un tramo
-  abierto a la vez. Si la salida es ≤ entrada se guarda al día siguiente (turno de noche) y cuenta
+- Tabla `trabajo_shifts`: `date` (día de la entrada), `startAt`, `endAt` (null = dentro),
+  `breakMinutes` (comida), `note`. **Sin cronómetro**: horas = `endAt − startAt − breakMinutes`
+  (`lib/time.ts` → `shiftMinutes`). Solo un tramo abierto a la vez.
+- **Horario del usuario** (`lib/schedule.ts`): L–J 9:00–19:00 con 1 h de comida (9 h efectivas),
+  V 9:00–15:00 sin comida (6 h); 42 h/semana. Al fichar, el primer tramo del día lleva la comida
+  del horario y los siguientes 0. "Añadir horas" prerrellena entrada/salida/comida según el día.
+  La comida se puede cambiar en cada registro (No / 30 min / 1 h / 1 h 30 min). Los totales de
+  hoy y semana muestran "de 9 h" / "de 42 h".
+- Registros sin `breakMinutes` (anteriores a la v6 de la BD o copias antiguas) se completan con
+  `data/normalize.ts` (migración `upgradeTrabajoData` y al importar). Si la salida es ≤ entrada se guarda al día siguiente (turno de noche) y cuenta
   en el día de entrada.
 - Fichar: botón verde "Fichar entrada" / ámbar "Fichar salida" (variante `warning` de Button),
   totales de hoy y de la semana (lunes–domingo) y registros de hoy. "Añadir horas" y tocar un

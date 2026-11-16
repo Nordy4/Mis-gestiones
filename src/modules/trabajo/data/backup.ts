@@ -1,4 +1,5 @@
 import { trabajoRepo } from './hooks';
+import { upgradeTrabajoData } from './dexieRepository';
 import type { TrabajoExport } from './types';
 
 /** Comprobación mínima del formato antes de sustituir los datos. */
@@ -16,4 +17,5 @@ export function parseTrabajoExport(data: unknown): TrabajoExport {
 export const trabajoData = {
   exportData: () => trabajoRepo.exportAll(),
   importData: (data: unknown) => trabajoRepo.importAll(parseTrabajoExport(data)),
+  upgrade: upgradeTrabajoData,
 };

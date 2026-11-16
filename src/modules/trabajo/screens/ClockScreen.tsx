@@ -10,12 +10,14 @@ import { ShiftList } from '../components/ShiftList';
 import { ShiftSheet } from '../components/ShiftSheet';
 import { TrabajoTabs } from '../components/TrabajoTabs';
 import { addDays, formatHM, mondayOf, timeOf, totalMinutes } from '../lib/time';
+import { scheduleFor, WEEK_EXPECTED_MINUTES } from '../lib/schedule';
 
-function Tile({ label, value }: { label: string; value: string }) {
+function Tile({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-surface p-3">
       <div className="text-xs text-muted">{label}</div>
       <div className="mt-0.5 text-xl font-bold tabular-nums">{value}</div>
+      {detail && <div className="text-xs text-muted">{detail}</div>}
     </div>
   );
 }
@@ -24,6 +26,7 @@ function Tile({ label, value }: { label: string; value: string }) {
 export function ClockScreen() {
   const today = todayKey();
   const monday = mondayOf(today);
+  const todaySchedule = scheduleFor(today);
   const open = useOpenShift();
   const todayShifts = useShifts(today, today);
   const weekShifts = useShifts(monday, addDays(monday, 6));
@@ -99,8 +102,16 @@ export function ClockScreen() {
       )}
 
       <div className="mb-5 grid grid-cols-2 gap-2">
-        <Tile label="Hoy" value={formatHM(totalMinutes(todayShifts))} />
-        <Tile label="Esta semana" value={formatHM(totalMinutes(weekShifts))} />
+        <Tile
+          label="Hoy"
+          value={formatHM(totalMinutes(todayShifts))}
+          detail={todaySchedule.expectedMinutes ? `de ${formatHM(todaySchedule.expectedMinutes)}` : 'Día libre'}
+        />
+        <Tile
+          label="Esta semana"
+          value={formatHM(totalMinutes(weekShifts))}
+          detail={`de ${formatHM(WEEK_EXPECTED_MINUTES)}`}
+        />
       </div>
 
       <div className="mb-1 flex items-center justify-between pl-1">

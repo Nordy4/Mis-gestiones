@@ -27,9 +27,13 @@ export function buildRange(date: string, start: string, end: string | null) {
   return { startAt, endAt };
 }
 
-/** Minutos de un tramo (0 si está abierto). */
-export const shiftMinutes = (s: Pick<Shift, 'startAt' | 'endAt'>) =>
+/** Minutos entre entrada y salida, sin descontar nada (0 si está abierto). */
+export const spanMinutes = (s: Pick<Shift, 'startAt' | 'endAt'>) =>
   s.endAt ? Math.max(0, Math.round((Date.parse(s.endAt) - Date.parse(s.startAt)) / 60000)) : 0;
+
+/** Minutos trabajados de un tramo: de entrada a salida menos la comida (0 si está abierto). */
+export const shiftMinutes = (s: Pick<Shift, 'startAt' | 'endAt'> & { breakMinutes?: number }) =>
+  s.endAt ? Math.max(0, spanMinutes(s) - (s.breakMinutes ?? 0)) : 0;
 
 export const totalMinutes = (list: Shift[]) => list.reduce((sum, s) => sum + shiftMinutes(s), 0);
 

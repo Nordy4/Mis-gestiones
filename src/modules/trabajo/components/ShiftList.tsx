@@ -26,7 +26,10 @@ export function ShiftList({ shifts, onSelect }: Props) {
                   {timeOf(s.startAt)} – {open ? <span className="text-accent">ahora</span> : timeOf(s.endAt!)}
                   {nextDay && <span className="ml-1 text-xs font-normal text-muted">(+1 día)</span>}
                 </span>
-                <span className="block truncate text-sm text-muted">{open ? 'Dentro' : s.note || 'Jornada'}</span>
+                <span className="block truncate text-sm text-muted">
+                  {open ? 'Dentro' : s.note || 'Jornada'}
+                  {s.breakMinutes > 0 && ` · comida ${formatHM(s.breakMinutes)}`}
+                </span>
               </span>
               <span className="font-semibold tabular-nums">{open ? '…' : formatHM(shiftMinutes(s))}</span>
               <ChevronRight className="size-4 text-muted" />

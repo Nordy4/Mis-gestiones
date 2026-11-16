@@ -7,7 +7,8 @@ import { coreSchema, db, metaTable } from './db';
  * (tabla nueva, índice nuevo...). Dexie calcula la migración solo.
  */
 // Historial: 1 = inicial · 2 = gym_sections · 3 = gym cronómetro + gym_weight_log · 4 = módulo deudas · 5 = módulo trabajo
-export const DB_VERSION = 5;
+// · 6 = trabajo: comida (breakMinutes) en registros antiguos (solo migración de datos)
+export const DB_VERSION = 6;
 
 let initialized: Promise<void> | null = null;
 

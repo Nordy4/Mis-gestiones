@@ -9,6 +9,11 @@ export interface Shift {
   date: string;
   startAt: string;
   endAt: string | null;
+  /**
+   * Minutos de comida que se restan a este tramo. Por defecto según el horario del día
+   * (`lib/schedule.ts`): 60 de lunes a jueves, 0 el viernes. Solo el primer tramo del día la lleva.
+   */
+  breakMinutes: number;
   /** Nota opcional ("Guardia", "Teletrabajo"…). */
   note: string;
   createdAt: string;
@@ -18,6 +23,7 @@ export interface Shift {
 export interface ShiftInput {
   startAt: string;
   endAt: string | null;
+  breakMinutes: number;
   note: string;
 }
 
