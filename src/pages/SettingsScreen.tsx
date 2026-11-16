@@ -12,6 +12,8 @@ import {
   useLastExportDate,
   type BackupFile,
 } from '@/core/db/backup';
+import { useSyncStatus } from '@/core/sync/hooks';
+import { SyncSection } from './SyncSection';
 
 type Status = { kind: 'ok' | 'error'; text: string } | null;
 
@@ -26,6 +28,7 @@ export function SettingsScreen() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<Status>(null);
   const shareable = canShareFiles();
+  const signedIn = useSyncStatus().state !== 'signed-out';
 
   const run = async (fn: () => Promise<string | null>) => {
     setBusy(true);
@@ -43,11 +46,14 @@ export function SettingsScreen() {
   return (
     <Screen title="Ajustes" backTo="/">
       <div className="space-y-4">
+        <SyncSection />
+
         <section className="rounded-2xl border border-border/60 bg-surface p-4">
           <h2 className="font-semibold">Copia de seguridad</h2>
           <p className="mt-1 text-sm text-muted">
-            Tus datos solo están en este dispositivo. Exporta una copia de vez en cuando y guárdala en Drive o
-            en el ordenador.
+            {signedIn
+              ? 'Tus datos están en la nube. Aun así, puedes exportar una copia y guardarla en Drive o en el ordenador.'
+              : 'Sin sesión iniciada tus datos solo están en este dispositivo. Exporta una copia de vez en cuando y guárdala en Drive o en el ordenador.'}
           </p>
           <p className="mt-2 text-xs text-muted">
             Última copia: {lastExport ? formatDateTime(lastExport) : lastExport === null ? 'nunca' : '…'}

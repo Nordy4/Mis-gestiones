@@ -14,8 +14,16 @@ export interface MetaEntry {
   value: unknown;
 }
 
+/** Última versión sincronizada de cada registro: `<tabla>/<id>` → huella del contenido. */
+export interface SyncShadowEntry {
+  key: string;
+  hash: string;
+}
+
 export const coreSchema = {
   core_meta: 'key',
+  core_sync_shadow: 'key',
 };
 
 export const metaTable = () => db.table<MetaEntry, string>('core_meta');
+export const syncShadowTable = () => db.table<SyncShadowEntry, string>('core_sync_shadow');

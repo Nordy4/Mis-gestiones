@@ -12,7 +12,8 @@ Idioma de la UI y de los comentarios: **español**.
   Usa siempre estos tokens (`bg-surface`, `text-muted`…) en vez de colores sueltos.
 - React Router 8 con **`createHashRouter`** (URLs `#/gym/...`). Así el mismo build sirve en
   Vercel, GitHub Pages o cualquier hosting estático sin reglas de redirección. `base: './'` en Vite.
-- IndexedDB con Dexie 4 + `dexie-react-hooks` (`useLiveQuery`).
+- IndexedDB con Dexie 4 + `dexie-react-hooks` (`useLiveQuery`), sincronizado con Supabase
+  (`@supabase/supabase-js`).
 - PWA con `vite-plugin-pwa` (`registerType: 'autoUpdate'`, precache de todo → funciona offline).
 - Iconos de UI: `lucide-react`. Gráficas: Recharts.
 
@@ -39,7 +40,8 @@ src/
 ├─ index.css             Tailwind + tokens de tema + utilidades pb-safe / pt-safe
 ├─ core/                 lo compartido por todos los módulos (no conoce ningún módulo concreto)
 │  ├─ types.ts           ModuleDefinition / ModuleData
-│  ├─ db/db.ts           instancia Dexie única ('mi-vida') + tabla core_meta
+│  ├─ db/db.ts           instancia Dexie única ('mi-vida') + tablas core_meta y core_sync_shadow
+│  ├─ sync/              sincronización con Supabase (cliente, motor, middleware de cambios)
 │  ├─ db/setup.ts        DB_VERSION, compone los esquemas de los módulos, ejecuta seeds una vez
 │  ├─ components/        Screen, Button/IconButton, Sheet/ConfirmSheet, Field, EmptyState…
 │  └─ lib/               ids (newId UUID, nowIso), format (fechas es-ES, kg, parseDecimal)
@@ -65,7 +67,28 @@ Objetivo: poder migrar de IndexedDB a Supabase sin tocar las pantallas.
 - `data/hooks.ts` — hooks de lectura reactiva (`useLiveQuery`) + exporta el repositorio activo.
 - **Las pantallas y componentes solo importan de `data/hooks.ts` y `data/types.ts`.** Nunca Dexie.
 
-Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y adaptar `hooks.ts`.
+Los repositorios siguen siendo Dexie: la nube la gestiona la capa de sincronización (abajo), así
+que un módulo nuevo se sincroniza solo, sin código extra.
+
+### Sincronización con Supabase (`src/core/sync/`)
+
+- **Primero local**: la app lee y escribe solo en IndexedDB; `engine.ts` sincroniza en segundo plano
+  (al abrir, 2 s después de cada cambio, al volver a la app o a la red y cada 5 min).
+- Supabase: proyecto `qakodusxnrwkersrvgxt`, URL y clave *publishable* en `sync/client.ts`
+  (públicas por diseño; nunca poner la secret/service_role). Esquema en `supabase/schema.sql`
+  (se pega en el SQL Editor; es re-ejecutable). Una sola tabla genérica `sync_records`
+  (`user_id, tbl, id, data jsonb, deleted, updated_at`) con RLS por usuario.
+- Se sincronizan **todas las tablas de los módulos**; las `core_*` no. `changes.ts` es un middleware
+  Dexie que avisa de cada escritura. `core_sync_shadow` guarda la huella (JSON con claves ordenadas,
+  `stable.ts`) de lo último sincronizado: subir = registros cuya huella cambió + borrados (marca
+  `deleted`); bajar = filas con `updated_at` posterior al cursor `sync:lastPull` (con 5 min de margen).
+- Primera sincronización de un dispositivo: cuenta vacía → sube lo local; con datos → sustituyen a
+  los locales. Conflictos: gana el último en subir (uso de una sola persona).
+- Cuenta única del usuario (sin registro público: el usuario se crea en el panel de Supabase).
+  UI en Ajustes (`pages/SyncSection.tsx`): iniciar/cerrar sesión, estado, "Sincronizar".
+  Cerrar sesión deja los datos locales y borra el estado de sincronización.
+- Al probar en el navegador del PC **no inicies sesión con la cuenta real** si la BD local tiene
+  datos de prueba y la nube está vacía: se subirían.
 
 ### Base de datos
 

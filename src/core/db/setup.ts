@@ -1,4 +1,5 @@
 import { modules } from '@/modules/registry';
+import { changeNotifier } from '@/core/sync/changes';
 import { coreSchema, db, metaTable } from './db';
 
 /**
@@ -8,7 +9,8 @@ import { coreSchema, db, metaTable } from './db';
  */
 // Historial: 1 = inicial · 2 = gym_sections · 3 = gym cronómetro + gym_weight_log · 4 = módulo deudas · 5 = módulo trabajo
 // · 6 = trabajo: comida (breakMinutes) en registros antiguos (solo migración de datos)
-export const DB_VERSION = 6;
+// · 7 = core_sync_shadow (sincronización con Supabase)
+export const DB_VERSION = 7;
 
 let initialized: Promise<void> | null = null;
 
@@ -35,6 +37,8 @@ export function initDatabase(): Promise<void> {
       .upgrade(async (tx) => {
         for (const mod of modules) await mod.data?.upgrade?.(tx);
       });
+    // Avisa a la sincronización de cada escritura en las tablas de los módulos.
+    db.use(changeNotifier);
     await db.open();
 
     for (const mod of modules) {
