@@ -27,6 +27,8 @@ Idioma de la UI y de los comentarios: **español**.
 En esta máquina Node y Git pueden no estar en el PATH de la shell de Claude. Refresca el PATH con:
 `$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")`.
 Git viene con GitHub Desktop: `C:\Users\Jordi\AppData\Local\GitHubDesktop\app-*\resources\app\git\cmd\git.exe`.
+Push/fetch a GitHub funcionan desde aquí: `~/.gitconfig` usa GitHub CLI (`gh auth git-credential`,
+cuenta Nordy4) como credencial para github.com. Haz push **solo cuando el usuario lo pida**.
 
 ## Arquitectura
 
