@@ -41,3 +41,14 @@ create policy "sync_records: solo el dueño" on public.sync_records
 
 revoke all on public.sync_records from anon;
 grant select, insert, update, delete on public.sync_records to authenticated;
+
+-- Mantener el proyecto activo (el plan gratuito lo pausa tras ~7 días sin uso).
+-- La llama cada 3 días .github/workflows/supabase-keepalive.yml. Solo devuelve la hora:
+-- no lee ni expone ningún dato.
+create or replace function public.keepalive() returns timestamptz
+language sql stable set search_path = '' as $$
+  select now();
+$$;
+
+revoke all on function public.keepalive() from public;
+grant execute on function public.keepalive() to anon, authenticated;

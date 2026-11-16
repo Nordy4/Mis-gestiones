@@ -87,6 +87,9 @@ que un módulo nuevo se sincroniza solo, sin código extra.
 - Cuenta única del usuario (sin registro público: el usuario se crea en el panel de Supabase).
   UI en Ajustes (`pages/SyncSection.tsx`): iniciar/cerrar sesión, estado, "Sincronizar".
   Cerrar sesión deja los datos locales y borra el estado de sincronización.
+- Plan gratuito: Supabase pausa el proyecto tras ~7 días sin uso. `.github/workflows/supabase-keepalive.yml`
+  llama cada 3 días a la función `public.keepalive()` (solo devuelve `now()`). GitHub desactiva los
+  workflows programados tras 60 días sin commits en el repo: si pasa, reactivarlo en la pestaña Actions.
 - Al probar en el navegador del PC **no inicies sesión con la cuenta real** si la BD local tiene
   datos de prueba y la nube está vacía: se subirían.
 
