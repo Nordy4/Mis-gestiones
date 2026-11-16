@@ -2,7 +2,8 @@
 
 PWA personal para el móvil: un hub con un módulo por cada área de la vida.
 Módulos: **Gym** (rutinas con secciones, pesos de Goyo y Bebe, cronómetro y calendario) y
-**Deudas** (quién me debe dinero, cuánto, y los pagos).
+**Deudas** (quién me debe dinero, cuánto, y los pagos) y **Trabajo** (fichar entrada y salida,
+añadir o corregir horas y calendario de horas trabajadas).
 
 Vite + React + TypeScript + Tailwind · IndexedDB (Dexie) · funciona offline · instalable.
 

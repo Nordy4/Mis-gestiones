@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'warning';
 type Size = 'md' | 'lg';
 
 const variants: Record<Variant, string> = {
@@ -8,6 +8,8 @@ const variants: Record<Variant, string> = {
   secondary: 'bg-surface-2 text-text active:bg-border',
   ghost: 'bg-transparent text-text active:bg-surface-2',
   danger: 'bg-danger/15 text-danger active:bg-danger/25',
+  /** Acción principal "de cierre" (p. ej. fichar salida), distinta de la verde de inicio. */
+  warning: 'bg-amber-400 text-black active:bg-amber-500',
 };
 
 const sizes: Record<Size, string> = {

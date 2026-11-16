@@ -1,7 +1,7 @@
 # Mi Vida — guía para Claude
 
 PWA personal (uso en Android, una mano, modo oscuro) organizada como un **hub de módulos**:
-una tarjeta en el inicio por cada área de la vida. Módulos: **Gym** y **Deudas**.
+una tarjeta en el inicio por cada área de la vida. Módulos: **Gym**, **Deudas** y **Trabajo**.
 Idioma de la UI y de los comentarios: **español**.
 
 ## Stack
@@ -138,6 +138,26 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
 - Saldo de una persona = Σ deudas − Σ pagos (positivo = me debe; negativo = "le debes tú").
   La lista separa pendientes (de mayor a menor) y "Saldadas" (saldo 0).
 - Persona: botones "Me debe" (añade deuda) y "Me paga" (pago); tocar un movimiento lo edita o borra.
+
+### Módulo Trabajo (registro horario)
+
+- Pestañas (`TrabajoTabs` sobre `core/components/BottomTabs`): **Fichar** (`/trabajo`) y
+  **Calendario** (`/trabajo/calendario?dia=`).
+- Tabla `trabajo_shifts`: `date` (día de la entrada), `startAt`, `endAt` (null = dentro), `note`.
+  **Sin cronómetro**: la duración siempre es `endAt − startAt` (`lib/time.ts`). Solo un tramo
+  abierto a la vez. Si la salida es ≤ entrada se guarda al día siguiente (turno de noche) y cuenta
+  en el día de entrada.
+- Fichar: botón verde "Fichar entrada" / ámbar "Fichar salida" (variante `warning` de Button),
+  totales de hoy y de la semana (lunes–domingo) y registros de hoy. "Añadir horas" y tocar un
+  registro abren `ShiftSheet` (día, entrada, salida, nota, borrar).
+- Calendario: `core/components/MonthCalendar` con las horas de cada día dentro de la celda,
+  total del mes y detalle del día elegido (añadir/editar).
+
+### Componentes compartidos útiles para módulos nuevos
+
+- `core/components/BottomTabs` — pestañas inferiores de un módulo.
+- `core/components/MonthCalendar` (+ `monthRange`, `shiftMonth`) — calendario mensual con días
+  marcados y texto por día. (El calendario de Gym es anterior y aún no lo usa.)
 
 ## Despliegue
 
