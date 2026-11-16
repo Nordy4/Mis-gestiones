@@ -1,7 +1,8 @@
 # Mi Vida
 
 PWA personal para el móvil: un hub con un módulo por cada área de la vida.
-Módulos: **Gym** (rutinas, registro de series, estadísticas).
+Módulos: **Gym** (rutinas con secciones, pesos de Goyo y Bebe, cronómetro y calendario) y
+**Deudas** (quién me debe dinero, cuánto, y los pagos).
 
 Vite + React + TypeScript + Tailwind · IndexedDB (Dexie) · funciona offline · instalable.
 

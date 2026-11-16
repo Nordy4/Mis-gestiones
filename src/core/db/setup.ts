@@ -6,8 +6,8 @@ import { coreSchema, db, metaTable } from './db';
  * SÚBELA en 1 cada vez que cambies el `schema` de cualquier módulo
  * (tabla nueva, índice nuevo...). Dexie calcula la migración solo.
  */
-// Historial: 1 = inicial · 2 = gym_sections · 3 = gym cronómetro + gym_weight_log
-export const DB_VERSION = 3;
+// Historial: 1 = inicial · 2 = gym_sections · 3 = gym cronómetro + gym_weight_log · 4 = módulo deudas
+export const DB_VERSION = 4;
 
 let initialized: Promise<void> | null = null;
 

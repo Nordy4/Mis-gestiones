@@ -1,7 +1,7 @@
 # Mi Vida — guía para Claude
 
 PWA personal (uso en Android, una mano, modo oscuro) organizada como un **hub de módulos**:
-una tarjeta en el inicio por cada área de la vida. Primer módulo: **Gym**.
+una tarjeta en el inicio por cada área de la vida. Módulos: **Gym** y **Deudas**.
 Idioma de la UI y de los comentarios: **español**.
 
 ## Stack
@@ -126,6 +126,16 @@ Para migrar a Supabase: crear `supabaseRepository.ts` que cumpla la interfaz y a
   pesos (una línea por persona) y tabla por día. Recharts se carga en diferido (`lazy`).
 - Formatos antiguos (v1: `initialWeight`, series; v2: secciones, `partnerWeight` en series;
   entrenos sin cronómetro) se convierten en `data/normalize.ts` al migrar la BD y al importar.
+
+### Módulo Deudas
+
+- Rutas (`deudas/paths.ts`): `/deudas` (lista + total que me deben) y `/deudas/persona/:id`.
+- Tablas: `deudas_debtors` (personas, se archivan con `archivedAt`) y `deudas_movements`
+  (`type: 'debt' | 'payment'`, `amountCents`, `note`, `date`). **Dinero siempre en céntimos
+  enteros**; formatear con `formatMoney(cents)` y leer con `parseMoneyToCents` (core/lib/format).
+- Saldo de una persona = Σ deudas − Σ pagos (positivo = me debe; negativo = "le debes tú").
+  La lista separa pendientes (de mayor a menor) y "Saldadas" (saldo 0).
+- Persona: botones "Me debe" (añade deuda) y "Me paga" (pago); tocar un movimiento lo edita o borra.
 
 ## Despliegue
 

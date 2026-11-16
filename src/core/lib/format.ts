@@ -32,6 +32,19 @@ export function formatKg(n: number | null | undefined): string {
   return n.toLocaleString('es-ES', { maximumFractionDigits: 2 });
 }
 
+const euro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+
+/** 123450 céntimos -> "1234,50 €" */
+export function formatMoney(cents: number): string {
+  return euro.format(cents / 100);
+}
+
+/** "12,5" -> 1250 céntimos. null si está vacío, no es número o es negativo. */
+export function parseMoneyToCents(s: string): number | null {
+  const n = parseDecimal(s.replace(/€/g, '').replace(/\.(?=\d{3}(\D|$))/g, ''));
+  return n === null || n < 0 ? null : Math.round(n * 100);
+}
+
 /** Acepta "52,5" o "52.5". Devuelve null si está vacío o no es número. */
 export function parseDecimal(s: string): number | null {
   const t = s.trim().replace(',', '.');
