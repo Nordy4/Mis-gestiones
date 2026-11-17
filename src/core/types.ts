@@ -41,5 +41,11 @@ export interface ModuleDefinition {
   path: string;
   /** Rutas relativas a `path` ('' = pantalla principal del módulo). */
   routes: RouteObject[];
+  /**
+   * Si se define, este módulo recibe lo que se comparte con la app (Android → Compartir →
+   * Mi Vida). Ruta relativa al módulo ('' = su pantalla principal); llega con
+   * `?url=&title=&text=` (ver core/lib/shareTarget.ts). Solo un módulo puede tenerlo.
+   */
+  shareTarget?: string;
   data?: ModuleData;
 }

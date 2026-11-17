@@ -1,7 +1,7 @@
 # Mi Vida — guía para Claude
 
 PWA personal (uso en Android, una mano, modo oscuro) organizada como un **hub de módulos**:
-una tarjeta en el inicio por cada área de la vida. Módulos: **Gym**, **Deudas** y **Trabajo**.
+una tarjeta en el inicio por cada área de la vida. Módulos: **Gym**, **Deudas**, **Trabajo** y **Compras**.
 Idioma de la UI y de los comentarios: **español**.
 
 ## Stack
@@ -44,7 +44,7 @@ src/
 │  ├─ sync/              sincronización con Supabase (cliente, motor, middleware de cambios)
 │  ├─ db/setup.ts        DB_VERSION, compone los esquemas de los módulos, ejecuta seeds una vez
 │  ├─ components/        Screen, Button/IconButton, Sheet/ConfirmSheet, Field, EmptyState…
-│  └─ lib/               ids (newId UUID, nowIso), format (fechas es-ES, kg, parseDecimal)
+│  └─ lib/               ids, format, links (vista previa), shareTarget, moduleTasks (tick)
 ├─ pages/                pantallas del hub: HomeScreen, SettingsScreen, NotFoundScreen
 └─ modules/
    ├─ registry.ts        array `modules` → tarjetas del inicio, rutas, tablas y backup
@@ -196,6 +196,20 @@ que un módulo nuevo se sincroniza solo, sin código extra.
   registro abren `ShiftSheet` (día, entrada, salida, nota, borrar).
 - Calendario: `core/components/MonthCalendar` con las horas de cada día dentro de la celda,
   total del mes y detalle del día elegido (añadir/editar).
+
+### Módulo Compras (productos guardados)
+
+- Ruta `/compras`: lista (foto, nombre, tienda; tocar abre el enlace, lápiz edita/borra) y
+  "Añadir enlace". Tabla `compras_products` (`url`, `title`, `imageUrl`, `site`).
+- **Compartir desde Android**: `share_target` (GET `./?title=&text=&url=`) en el manifest
+  (`vite.config.ts`). `core/lib/shareTarget.ts` (antes de montar el router, que por eso se crea
+  dentro de `<App/>`) lo pasa a la ruta del módulo con `shareTarget` (`/compras?url=…`) y la
+  pantalla abre `ProductSheet` prerrellenado. Muchas apps mandan el enlace dentro de `text`
+  (`extractUrl`). Solo funciona con la PWA instalada.
+- **Vista previa** (nombre, foto, tienda): Edge Function `supabase/functions/link-preview`
+  (Open Graph; se despliega desde el panel de Supabase → Edge Functions → Via Editor; verifica JWT,
+  así que solo con sesión). Cliente en `core/lib/links.ts` (`fetchLinkPreview`, devuelve null si
+  no hay sesión/conexión o la tienda bloquea). Las fotos se enlazan desde la tienda (no se guardan).
 
 ### Componentes compartidos útiles para módulos nuevos
 

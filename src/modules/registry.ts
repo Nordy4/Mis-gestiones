@@ -2,6 +2,7 @@ import type { ModuleDefinition } from '@/core/types';
 import { gymModule } from './gym';
 import { deudasModule } from './deudas';
 import { trabajoModule } from './trabajo';
+import { comprasModule } from './compras';
 
 /**
  * Registro central de módulos. El orden del array es el orden de las tarjetas
@@ -10,4 +11,4 @@ import { trabajoModule } from './trabajo';
  * Para añadir un módulo: crea src/modules/<id>/index.ts exportando un
  * ModuleDefinition y añádelo aquí. Ver CLAUDE.md → "Cómo añadir un módulo".
  */
-export const modules: ModuleDefinition[] = [gymModule, deudasModule, trabajoModule];
+export const modules: ModuleDefinition[] = [gymModule, deudasModule, trabajoModule, comprasModule];

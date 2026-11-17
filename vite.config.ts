@@ -31,6 +31,12 @@ export default defineConfig({
         orientation: 'portrait',
         background_color: '#09090b',
         theme_color: '#09090b',
+        // Aparece en el menú Compartir de Android (con la app instalada). Ver core/lib/shareTarget.ts.
+        share_target: {
+          action: './',
+          method: 'GET',
+          params: { title: 'title', text: 'text', url: 'url' },
+        },
         icons: [
           { src: 'icons/pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/pwa-512.png', sizes: '512x512', type: 'image/png' },

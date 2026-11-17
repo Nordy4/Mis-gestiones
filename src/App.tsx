@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { createHashRouter, RouterProvider, useRouteError } from 'react-router';
 import { modules } from '@/modules/registry';
 import { HomeScreen } from '@/pages/HomeScreen';
@@ -18,7 +19,9 @@ function RouteError() {
 }
 
 // HashRouter (#/gym/...): funciona en cualquier hosting estático sin reglas de redirección.
-const router = createHashRouter([
+// Se crea al montar <App/> (no al importar) para que main.tsx pueda ajustar antes la URL
+// de un enlace compartido (core/lib/shareTarget.ts).
+const createRouter = () => createHashRouter([
   {
     path: '/',
     errorElement: <RouteError />,
@@ -33,5 +36,6 @@ const router = createHashRouter([
 ]);
 
 export function App() {
+  const [router] = useState(createRouter);
   return <RouterProvider router={router} />;
 }

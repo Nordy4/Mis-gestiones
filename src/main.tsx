@@ -6,6 +6,7 @@ import { App } from './App';
 import { initDatabase } from '@/core/db/setup';
 import { startSync } from '@/core/sync/engine';
 import { startModuleTasks } from '@/core/lib/moduleTasks';
+import { consumeShareTarget } from '@/core/lib/shareTarget';
 
 // Service worker: cachea la app para que funcione offline y se actualiza solo.
 registerSW({ immediate: true });
@@ -14,6 +15,7 @@ const root = createRoot(document.getElementById('root')!);
 
 initDatabase()
   .then(() => {
+    consumeShareTarget();
     startModuleTasks();
     startSync();
     root.render(
