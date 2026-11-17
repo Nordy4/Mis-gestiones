@@ -69,7 +69,8 @@ grant execute on function public.keepalive() to anon, authenticated;
 
 -- Calendario de Gastos fijos (suscripción desde Google Calendar).
 -- Cada usuario tiene un enlace privado con un token aleatorio. La Edge Function
--- `calendar-feed` (sin sesión, la llama Google) usa el token para leer SOLO los gastos fijos.
+-- `calendar-feed` (sin sesión, la llama Google) usa el token para leer SOLO los gastos fijos,
+-- a través de gastos_feed_items, que solo puede ejecutar service_role (no está en la API pública).
 create table if not exists public.calendar_feeds (
   user_id    uuid        primary key default auth.uid() references auth.users (id) on delete cascade,
   token      text        not null unique check (length(token) >= 32),
@@ -105,5 +106,6 @@ language sql stable security definer set search_path = '' as $$
     and r.data is not null;
 $$;
 
-revoke all on function public.gastos_feed_items(text) from public;
-grant execute on function public.gastos_feed_items(text) to anon, authenticated;
+-- No es pública: solo la llama la Edge Function calendar-feed con service_role.
+revoke all on function public.gastos_feed_items(text) from public, anon, authenticated;
+grant execute on function public.gastos_feed_items(text) to service_role;

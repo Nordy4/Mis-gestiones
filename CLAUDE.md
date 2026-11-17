@@ -224,7 +224,8 @@ que un módulo nuevo se sincroniza solo, sin código extra.
 - **Google Calendar = suscripción iCal** (solo app → calendario): Edge Function
   `supabase/functions/calendar-feed` (**sin verificación JWT**, la llama Google) genera un .ics con
   un evento de todo el día por gasto y `RRULE` mensual/anual. Lee de `sync_records` mediante la
-  función SQL `gastos_feed_items(token)` (security definer, solo `gastos_expenses`). El token
+  función SQL `gastos_feed_items(token)` (security definer, solo `gastos_expenses`; **solo
+  ejecutable por service_role**, la función usa `SUPABASE_SERVICE_ROLE_KEY` del entorno). El token
   privado vive en la tabla `calendar_feeds` (uno por usuario; se crea/rehace desde la app,
   `data/calendarFeed.ts`). Requiere sesión iniciada (la nube es la fuente del calendario).
   Google refresca las suscripciones cada varias horas.
@@ -246,6 +247,9 @@ que un módulo nuevo se sincroniza solo, sin código extra.
 - Validación en servidor: restricciones en `supabase/schema.sql`; Edge Functions con límites de
   tamaño, CORS solo para la app (`ALLOWED_ORIGINS` en link-preview) y errores genéricos.
 - `calendar-feed` va sin JWT a propósito (token privado en la URL); `link-preview` con JWT.
+- Hay conector MCP de Supabase: SQL con `apply_migration` (y refleja el cambio en
+  `supabase/schema.sql`) y Edge Functions con `deploy_edge_function` (respeta `verify_jwt`).
+  Tras cambios de BD, revisa `get_advisors` (security).
 - Workflows: acciones fijadas por SHA y permisos mínimos.
 
 ## Despliegue

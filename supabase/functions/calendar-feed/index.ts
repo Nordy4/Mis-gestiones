@@ -8,9 +8,10 @@
 // "calendar-feed", pega este archivo y despliega. Después, en sus ajustes (Details), desactiva
 // "Enforce JWT verification" / "Verify JWT" y guarda.
 
-// Clave publishable: pública por diseño (la misma que va en la app).
+// La función SQL `gastos_feed_items` NO es pública: solo la puede ejecutar service_role.
+// Su clave la inyecta Supabase en el entorno de la Edge Function (nunca va en el código ni en Git).
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? 'https://qakodusxnrwkersrvgxt.supabase.co';
-const PUBLISHABLE_KEY = 'sb_publishable_eNbdt5qbAQmCVTX97ctDxg_U6aGqcRj';
+const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 interface Expense {
   id: string;
@@ -129,9 +130,10 @@ Deno.serve(async (req) => {
   const token = new URL(req.url).searchParams.get('token') ?? '';
   if (!/^[0-9a-f]{32,128}$/.test(token)) return new Response('Enlace no válido', { status: 404, headers: TEXT_HEADERS });
 
+  if (!SERVICE_KEY) return new Response('No se pudo leer el calendario', { status: 500, headers: TEXT_HEADERS });
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/gastos_feed_items`, {
     method: 'POST',
-    headers: { apikey: PUBLISHABLE_KEY, 'Content-Type': 'application/json' },
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ p_token: token }),
   });
   if (!res.ok) return new Response('No se pudo leer el calendario', { status: 502, headers: TEXT_HEADERS });

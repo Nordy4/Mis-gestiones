@@ -50,7 +50,7 @@ Además se encontraron y arreglaron tres problemas que no estaban en la lista:
 - `.github/workflows/deploy-pages.yml`: acciones fijadas por SHA (no por etiqueta), permisos
   mínimos por trabajo, `persist-credentials: false` y `npm audit` de producción antes de publicar.
 
-**Supabase (hay que aplicarlo a mano, ver «Pendiente»)**
+**Supabase (ya aplicado en el proyecto)**
 - `supabase/schema.sql`: restricciones en `sync_records` (nombre de tabla y id con formato válido,
   dato = objeto JSON ≤ 64 KB), formato de token en `calendar_feeds` y en `gastos_feed_items`,
   y sin permisos de ejecución sobre la función interna del trigger.
@@ -80,20 +80,29 @@ Además se encontraron y arreglaron tres problemas que no estaban en la lista:
 | Escape del .ics con `Spotify\r\nEND:VEVENT…` | ✅ Queda en una sola línea, sin evento falso |
 | Secretos en todo el historial de Git | ✅ Ninguno |
 | `npm audit --omit=dev` | ✅ 0 vulnerabilidades |
-| CORS de `link-preview` desde `evil.example` | ⏳ Aún `*`: falta redesplegar la función |
-| Restricciones nuevas de `sync_records` | ⏳ Falta ejecutar el SQL |
+| CORS de `link-preview` desde `evil.example` | ✅ Sin `Access-Control-Allow-Origin` (bloqueado); desde la app sí |
+| Restricciones de `sync_records`: tabla con `; drop table`, id de 200 caracteres, dato que no es objeto, dato de 200 KB | ✅ Las 4 rechazadas por la base de datos |
+| Token del calendario con formato inválido | ✅ Rechazado |
+| `calendar-feed` por POST | ✅ 405 |
+| `calendar-feed` con tu enlace real | ✅ 200, tus 3 gastos con su repetición |
+| Función SQL del calendario llamada directamente desde la API pública (incluso con el token real) | ✅ Denegado (401): solo la usa la Edge Function |
+| Security Advisor de Supabase | ✅ Limpio salvo «leaked password protection» (ver pendiente) |
 
-## Pendiente (lo tienes que hacer tú en Supabase)
+Todo lo de Supabase (SQL y las dos Edge Functions) lo aplicó Claude directamente con el conector
+de Supabase; las 53 filas existentes cumplían las nuevas restricciones antes de aplicarlas.
 
-1. **SQL Editor:** ejecutar de nuevo `supabase/schema.sql` entero (no borra datos).
-2. **Edge Functions → `link-preview` → Code:** pegar el nuevo `supabase/functions/link-preview/index.ts` y *Deploy*.
-3. **Edge Functions → `calendar-feed` → Code:** pegar el nuevo `supabase/functions/calendar-feed/index.ts`,
-   *Deploy*, y comprobar que **Verify JWT sigue desactivado**.
-4. **Authentication → Providers → Email → Password requirements:** longitud mínima 12 y exigir
+Mejora extra tras el Security Advisor: `gastos_feed_items` ya no es pública. Solo la puede
+ejecutar `service_role`, y `calendar-feed` usa esa clave desde las variables de entorno que
+Supabase le inyecta (no está en el código ni en Git).
+
+## Pendiente (lo tienes que hacer tú en el panel de Supabase / GitHub)
+
+1. **Authentication → Providers → Email → Password requirements:** longitud mínima 12 y exigir
    letras, números y símbolos. Usa una contraseña larga y única (gestor de contraseñas).
-5. **Authentication → Rate Limits:** revisar que el límite de inicios de sesión esté activo (por defecto lo está).
-6. *(Recomendado)* **GitHub → Settings → Security → Dependabot alerts:** activarlo para recibir avisos.
-7. *(Opcional)* **Advisors → Security Advisor** de Supabase: debería salir limpio.
+2. **Authentication → Attack Protection → Leaked password protection:** activarlo si tu plan lo
+   permite (comprueba las contraseñas contra filtraciones conocidas).
+3. **Authentication → Rate Limits:** revisar que el límite de inicios de sesión esté activo (por defecto lo está).
+4. *(Recomendado)* **GitHub → Settings → Security → Dependabot alerts:** activarlo para recibir avisos.
 
 ## Riesgos aceptados
 
