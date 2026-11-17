@@ -27,6 +27,10 @@ export function nextCharge(e: Pick<Expense, 'period' | 'startDate'>, today = tod
 export const monthlyCents = (e: Pick<Expense, 'period' | 'amountCents'>) =>
   e.period === 'monthly' ? e.amountCents : e.amountCents / 12;
 
+/** Lo que cuesta al año (un gasto mensual × 12). */
+export const yearlyCents = (e: Pick<Expense, 'period' | 'amountCents'>) =>
+  e.period === 'monthly' ? e.amountCents * 12 : e.amountCents;
+
 /** "día 5 de cada mes" · "cada 12 mar" */
 export function scheduleLabel(e: Pick<Expense, 'period' | 'startDate'>): string {
   const [y, m, d] = e.startDate.split('-').map(Number);

@@ -4,12 +4,12 @@ import { CalendarSync, ChevronRight, Plus, Repeat } from 'lucide-react';
 import { Screen } from '@/core/components/Screen';
 import { Button } from '@/core/components/Button';
 import { EmptyState } from '@/core/components/EmptyState';
-import { ConfirmSheet } from '@/core/components/Sheet';
+import { ConfirmSheet, Sheet } from '@/core/components/Sheet';
 import { formatDateShort, formatMoney, todayKey } from '@/core/lib/format';
 import { gastosRepo, useExpenses } from '../data/hooks';
 import type { Expense } from '../data/types';
 import { ExpenseSheet } from '../components/ExpenseSheet';
-import { monthlyCents, nextCharge, PERIOD_LABEL, scheduleLabel } from '../lib/period';
+import { monthlyCents, nextCharge, PERIOD_LABEL, scheduleLabel, yearlyCents } from '../lib/period';
 import { gastosPaths } from '../paths';
 
 /** Lista de gastos fijos (por próximo cargo) con el coste al mes y al año. */
@@ -18,12 +18,17 @@ export function ExpensesScreen() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [deleting, setDeleting] = useState<Expense | null>(null);
+  const [showYear, setShowYear] = useState(false);
 
   const today = todayKey();
   const rows = (expenses ?? [])
     .map((e) => ({ e, next: nextCharge(e, today) }))
     .sort((a, b) => a.next.localeCompare(b.next) || a.e.name.localeCompare(b.e.name));
   const perMonth = Math.round(rows.reduce((sum, r) => sum + monthlyCents(r.e), 0));
+  const yearly = rows
+    .map(({ e }) => ({ e, cents: yearlyCents(e) }))
+    .sort((a, b) => b.cents - a.cents || a.e.name.localeCompare(b.e.name));
+  const perYear = yearly.reduce((sum, y) => sum + y.cents, 0);
 
   return (
     <Screen
@@ -52,13 +57,20 @@ export function ExpensesScreen() {
             <div className="mt-0.5 text-xl font-bold tabular-nums text-accent">{formatMoney(perMonth)}</div>
             <div className="text-xs text-muted">anuales repartidos</div>
           </div>
-          <div className="rounded-2xl border border-border/60 bg-surface p-3">
-            <div className="text-xs text-muted">Al año</div>
-            <div className="mt-0.5 text-xl font-bold tabular-nums">{formatMoney(perMonth * 12)}</div>
-            <div className="text-xs text-muted">
-              {rows.length} gasto{rows.length === 1 ? '' : 's'}
+          <button
+            type="button"
+            onClick={() => setShowYear(true)}
+            disabled={rows.length === 0}
+            className="rounded-2xl border border-border/60 bg-surface p-3 text-left active:bg-surface-2"
+          >
+            <div className="flex items-center justify-between text-xs text-muted">
+              Al año {rows.length > 0 && <ChevronRight className="size-4" />}
             </div>
-          </div>
+            <div className="mt-0.5 text-xl font-bold tabular-nums">{formatMoney(perYear)}</div>
+            <div className="text-xs text-muted">
+              {rows.length > 0 ? 'Ver desglose' : '0 gastos'}
+            </div>
+          </button>
         </section>
       )}
 
@@ -96,6 +108,31 @@ export function ExpensesScreen() {
           ))}
         </ul>
       )}
+
+      <Sheet open={showYear} title={`Al año · ${formatMoney(perYear)}`} onClose={() => setShowYear(false)}>
+        <ul className="max-h-[60vh] divide-y divide-border/60 overflow-y-auto">
+          {yearly.map(({ e, cents }) => (
+            <li key={e.id} className="flex items-center gap-3 py-3">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold">{e.name}</span>
+                <span className="block text-xs text-muted">
+                  {e.period === 'monthly' ? `${formatMoney(e.amountCents)} × 12 meses` : 'Pago anual'}
+                </span>
+              </span>
+              <span className="text-right">
+                <span className="block font-semibold tabular-nums">{formatMoney(cents)}</span>
+                <span className="block text-xs text-muted tabular-nums">
+                  {perYear ? Math.round((cents / perYear) * 100) : 0} %
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-1 flex items-center justify-between border-t border-border pt-3 pb-1 font-semibold">
+          <span>Total</span>
+          <span className="tabular-nums text-accent">{formatMoney(perYear)}</span>
+        </div>
+      </Sheet>
 
       <ExpenseSheet
         open={adding}
