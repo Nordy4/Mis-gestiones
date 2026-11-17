@@ -14,3 +14,6 @@ export const useOpenShift = () => useLiveQuery(async () => (await trabajoRepo.ge
 /** Tramos entre dos fechas YYYY-MM-DD (incluidas). */
 export const useShifts = (from: string, to: string) =>
   useLiveQuery(() => trabajoRepo.listShifts(from, to), [from, to]);
+
+/** Todos los tramos (para el saldo de horas extra). */
+export const useAllShifts = () => useLiveQuery(() => trabajoRepo.listShifts('0000-01-01', '9999-12-31'), []);

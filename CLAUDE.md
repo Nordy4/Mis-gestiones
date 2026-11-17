@@ -175,13 +175,18 @@ que un módulo nuevo se sincroniza solo, sin código extra.
 - **Horario del usuario** (`lib/schedule.ts`): L–J 9:00–19:00 con 1 h de comida (9 h efectivas),
   V 9:00–15:00 sin comida (6 h); 42 h/semana. Al fichar, el primer tramo del día lleva la comida
   del horario y los siguientes 0. "Añadir horas" prerrellena entrada/salida/comida según el día.
-  La comida se puede cambiar en cada registro (No / 30 min / 1 h / 1 h 30 min). Los totales de
-  hoy y semana muestran "de 9 h" / "de 42 h".
+  La comida se puede cambiar en cada registro (No / 30 min / 1 h / 1 h 30 min). El total de hoy
+  muestra "de 9 h".
+- **Horas extra** (`lib/balance.ts`): saldo acumulado = Σ por día (trabajado − jornada). Solo
+  cuentan días con registros (sin registro = vacaciones/festivo, no resta), ni futuros ni con un
+  tramo abierto (no resta la jornada a media mañana). Fin de semana: jornada 0, todo suma. La
+  tarjeta "Horas extra" (sustituye al total semanal) muestra el saldo total (morado si +, rojo
+  si −) y el de esta semana.
 - Registros sin `breakMinutes` (anteriores a la v6 de la BD o copias antiguas) se completan con
   `data/normalize.ts` (migración `upgradeTrabajoData` y al importar). Si la salida es ≤ entrada se guarda al día siguiente (turno de noche) y cuenta
   en el día de entrada.
-- Fichar: botón verde "Fichar entrada" / ámbar "Fichar salida" (variante `warning` de Button),
-  totales de hoy y de la semana (lunes–domingo) y registros de hoy. "Añadir horas" y tocar un
+- Fichar: botón morado "Fichar entrada" / ámbar "Fichar salida" (variante `warning` de Button),
+  total de hoy, horas extra y registros de hoy. "Añadir horas" y tocar un
   registro abren `ShiftSheet` (día, entrada, salida, nota, borrar).
 - Calendario: `core/components/MonthCalendar` con las horas de cada día dentro de la celda,
   total del mes y detalle del día elegido (añadir/editar).

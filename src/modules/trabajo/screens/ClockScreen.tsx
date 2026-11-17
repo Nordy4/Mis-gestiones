@@ -4,19 +4,30 @@ import { Screen } from '@/core/components/Screen';
 import { Button } from '@/core/components/Button';
 import { ConfirmSheet } from '@/core/components/Sheet';
 import { formatDateLong, todayKey } from '@/core/lib/format';
-import { trabajoRepo, useOpenShift, useShifts } from '../data/hooks';
+import { trabajoRepo, useAllShifts, useOpenShift, useShifts } from '../data/hooks';
 import type { Shift } from '../data/types';
 import { ShiftList } from '../components/ShiftList';
 import { ShiftSheet } from '../components/ShiftSheet';
 import { TrabajoTabs } from '../components/TrabajoTabs';
-import { addDays, formatHM, mondayOf, timeOf, totalMinutes } from '../lib/time';
-import { scheduleFor, WEEK_EXPECTED_MINUTES } from '../lib/schedule';
+import { formatHM, mondayOf, timeOf, totalMinutes } from '../lib/time';
+import { scheduleFor } from '../lib/schedule';
+import { balanceMinutes, formatBalance } from '../lib/balance';
 
-function Tile({ label, value, detail }: { label: string; value: string; detail?: string }) {
+function Tile({
+  label,
+  value,
+  detail,
+  valueClassName = '',
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  valueClassName?: string;
+}) {
   return (
     <div className="rounded-2xl border border-border/60 bg-surface p-3">
       <div className="text-xs text-muted">{label}</div>
-      <div className="mt-0.5 text-xl font-bold tabular-nums">{value}</div>
+      <div className={`mt-0.5 text-xl font-bold tabular-nums ${valueClassName}`}>{value}</div>
       {detail && <div className="text-xs text-muted">{detail}</div>}
     </div>
   );
@@ -29,14 +40,17 @@ export function ClockScreen() {
   const todaySchedule = scheduleFor(today);
   const open = useOpenShift();
   const todayShifts = useShifts(today, today);
-  const weekShifts = useShifts(monday, addDays(monday, 6));
+  const allShifts = useAllShifts();
 
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Shift | null>(null);
   const [deleting, setDeleting] = useState<Shift | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
-  if (open === undefined || !todayShifts || !weekShifts) return null;
+  if (open === undefined || !todayShifts || !allShifts) return null;
+
+  const balance = balanceMinutes(allShifts, today);
+  const weekBalance = balanceMinutes(allShifts, today, monday);
 
   const clockIn = async () => {
     try {
@@ -108,9 +122,10 @@ export function ClockScreen() {
           detail={todaySchedule.expectedMinutes ? `de ${formatHM(todaySchedule.expectedMinutes)}` : 'Día libre'}
         />
         <Tile
-          label="Esta semana"
-          value={formatHM(totalMinutes(weekShifts))}
-          detail={`de ${formatHM(WEEK_EXPECTED_MINUTES)}`}
+          label="Horas extra"
+          value={formatBalance(balance)}
+          valueClassName={balance > 0 ? 'text-accent' : balance < 0 ? 'text-danger' : ''}
+          detail={`Esta semana ${formatBalance(weekBalance)}`}
         />
       </div>
 
