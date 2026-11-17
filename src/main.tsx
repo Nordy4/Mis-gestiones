@@ -13,7 +13,19 @@ registerSW({ immediate: true });
 
 const root = createRoot(document.getElementById('root')!);
 
-initDatabase()
+// Anti-clickjacking: GitHub Pages no permite la cabecera frame-ancestors, así que la app se
+// niega a funcionar dentro de un <iframe> de otra web.
+const framed = (() => {
+  try {
+    return window.top !== window.self;
+  } catch {
+    return true;
+  }
+})();
+
+if (framed) {
+  root.render(<p className="p-6 text-sm">Abre Mi Vida directamente, no dentro de otra página.</p>);
+} else initDatabase()
   .then(() => {
     consumeShareTarget();
     startModuleTasks();

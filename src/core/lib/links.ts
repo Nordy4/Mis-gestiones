@@ -24,6 +24,15 @@ export function isHttpUrl(value: string): boolean {
   }
 }
 
+/**
+ * La URL solo si es http(s); si no, null. Usar SIEMPRE antes de poner datos en `href` o `src`:
+ * un `javascript:` guardado (copia importada, sincronización…) sería un XSS al tocar el enlace.
+ */
+export function safeHttpUrl(value: string | null | undefined): string | null {
+  if (!value || value.length > 2048) return null;
+  return isHttpUrl(value.trim()) ? value.trim() : null;
+}
+
 /** "https://www.zara.com/es/..." → "zara.com" */
 export function siteOf(url: string): string {
   try {

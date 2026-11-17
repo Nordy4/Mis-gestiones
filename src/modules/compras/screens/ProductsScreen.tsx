@@ -5,32 +5,44 @@ import { Screen } from '@/core/components/Screen';
 import { Button, IconButton } from '@/core/components/Button';
 import { EmptyState } from '@/core/components/EmptyState';
 import { ConfirmSheet } from '@/core/components/Sheet';
-import { extractUrl } from '@/core/lib/links';
+import { extractUrl, safeHttpUrl } from '@/core/lib/links';
 import { comprasRepo, useProducts } from '../data/hooks';
 import type { Product } from '../data/types';
 import { ProductSheet } from '../components/ProductSheet';
 
 function ProductRow({ p, onEdit }: { p: Product; onEdit: () => void }) {
+  // Solo enlaces e imágenes http(s): nunca `javascript:` ni otros esquemas (XSS).
+  const href = safeHttpUrl(p.url);
+  const image = safeHttpUrl(p.imageUrl);
+  const content = (
+    <>
+      <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-surface">
+        {image ? (
+          <img src={image} alt="" loading="lazy" className="size-full object-cover" referrerPolicy="no-referrer" />
+        ) : (
+          <ShoppingBag className="size-6 text-muted" />
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 leading-snug font-semibold">{p.title || p.site}</span>
+        <span className="block truncate text-sm text-muted">{href ? p.site : 'Enlace no válido'}</span>
+      </span>
+    </>
+  );
   return (
     <li className="flex items-center gap-3 py-3">
-      <a
-        href={p.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex min-w-0 flex-1 items-center gap-3 active:opacity-70"
-      >
-        <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-surface">
-          {p.imageUrl ? (
-            <img src={p.imageUrl} alt="" loading="lazy" className="size-full object-cover" referrerPolicy="no-referrer" />
-          ) : (
-            <ShoppingBag className="size-6 text-muted" />
-          )}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 leading-snug font-semibold">{p.title || p.site}</span>
-          <span className="block truncate text-sm text-muted">{p.site}</span>
-        </span>
-      </a>
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex min-w-0 flex-1 items-center gap-3 active:opacity-70"
+        >
+          {content}
+        </a>
+      ) : (
+        <span className="flex min-w-0 flex-1 items-center gap-3">{content}</span>
+      )}
       <IconButton label={`Editar ${p.title}`} onClick={onEdit} className="size-9">
         <Pencil className="size-4" />
       </IconButton>

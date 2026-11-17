@@ -73,7 +73,11 @@ export async function shareBackup(): Promise<boolean> {
 }
 
 /** Lee y valida un archivo de copia (no escribe nada). */
+/** Una copia real ocupa KB; más de esto es un archivo equivocado o malicioso. */
+const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
+
 export async function readBackupFile(file: File): Promise<BackupFile> {
+  if (file.size > MAX_BACKUP_BYTES) throw new Error('El archivo es demasiado grande para ser una copia de Mi Vida.');
   let parsed: unknown;
   try {
     parsed = JSON.parse(await file.text());

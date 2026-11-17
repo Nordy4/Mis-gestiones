@@ -1,3 +1,4 @@
+import { safeHttpUrl } from '@/core/lib/links';
 import { comprasRepo } from './hooks';
 import type { ComprasExport, Product } from './types';
 
@@ -10,12 +11,15 @@ export function parseComprasExport(data: unknown): ComprasExport {
     if (!ok) throw new Error('Copia de Compras no válida: producto incompleto');
   }
   return {
-    products: (list as Product[]).map((p) => ({
-      ...p,
-      title: p.title ?? '',
-      imageUrl: p.imageUrl ?? null,
-      site: p.site ?? '',
-    })),
+    products: (list as Product[])
+      // Fuera enlaces que no sean http(s) (p. ej. `javascript:` en una copia manipulada).
+      .filter((p) => safeHttpUrl(p.url))
+      .map((p) => ({
+        ...p,
+        title: String(p.title ?? '').slice(0, 200),
+        imageUrl: safeHttpUrl(p.imageUrl),
+        site: String(p.site ?? '').slice(0, 100),
+      })),
   };
 }
 

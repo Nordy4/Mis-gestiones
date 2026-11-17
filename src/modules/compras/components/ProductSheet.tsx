@@ -3,7 +3,7 @@ import { ExternalLink, Loader2, ShoppingBag, Trash2 } from 'lucide-react';
 import { Sheet } from '@/core/components/Sheet';
 import { Field } from '@/core/components/Field';
 import { Button } from '@/core/components/Button';
-import { fetchLinkPreview, isHttpUrl, siteOf } from '@/core/lib/links';
+import { fetchLinkPreview, isHttpUrl, safeHttpUrl, siteOf } from '@/core/lib/links';
 import type { Product, ProductInput } from '../data/types';
 
 interface Props {
@@ -52,7 +52,7 @@ export function ProductSheet({ open, product, initial, onSubmit, onDelete, onClo
       setLoading(false);
       if (!preview) return;
       if (preview.title && !titleTouched.current) setTitle(preview.title);
-      if (preview.image) setImageUrl(preview.image);
+      if (safeHttpUrl(preview.image)) setImageUrl(safeHttpUrl(preview.image));
       if (preview.site) setSite(preview.site);
     }, 500);
     return () => clearTimeout(timer);
@@ -81,8 +81,8 @@ export function ProductSheet({ open, product, initial, onSubmit, onDelete, onClo
           <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-bg">
             {loading ? (
               <Loader2 className="size-6 animate-spin text-muted" />
-            ) : imageUrl ? (
-              <img src={imageUrl} alt="" className="size-full object-cover" referrerPolicy="no-referrer" />
+            ) : safeHttpUrl(imageUrl) ? (
+              <img src={safeHttpUrl(imageUrl)!} alt="" className="size-full object-cover" referrerPolicy="no-referrer" />
             ) : (
               <ShoppingBag className="size-7 text-muted" />
             )}
@@ -118,9 +118,9 @@ export function ProductSheet({ open, product, initial, onSubmit, onDelete, onClo
               <Trash2 className="size-5" />
             </Button>
           )}
-          {product && (
+          {product && safeHttpUrl(product.url) && (
             <a
-              href={product.url}
+              href={safeHttpUrl(product.url)!}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Abrir enlace"

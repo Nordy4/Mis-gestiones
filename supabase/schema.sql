@@ -16,6 +16,18 @@ create table if not exists public.sync_records (
 
 create index if not exists sync_records_user_updated on public.sync_records (user_id, updated_at);
 
+-- Validación en el servidor: aunque alguien use la API directamente con una sesión válida,
+-- solo entran filas con forma de "registro de la app" y de tamaño razonable.
+alter table public.sync_records drop constraint if exists sync_records_tbl_format;
+alter table public.sync_records add constraint sync_records_tbl_format
+  check (tbl ~ '^[a-z]+_[a-z0-9_]+$' and length(tbl) <= 64);
+alter table public.sync_records drop constraint if exists sync_records_id_format;
+alter table public.sync_records add constraint sync_records_id_format
+  check (length(id) between 1 and 100 and id !~ '[[:cntrl:]]');
+alter table public.sync_records drop constraint if exists sync_records_data_shape;
+alter table public.sync_records add constraint sync_records_data_shape
+  check (data is null or (jsonb_typeof(data) = 'object' and pg_column_size(data) <= 65536));
+
 -- La hora del cambio la pone siempre el servidor (no el reloj del móvil).
 create or replace function public.sync_records_touch() returns trigger
 language plpgsql set search_path = '' as $$
@@ -24,6 +36,8 @@ begin
   return new;
 end;
 $$;
+
+revoke all on function public.sync_records_touch() from public, anon, authenticated;
 
 drop trigger if exists sync_records_touch on public.sync_records;
 create trigger sync_records_touch
@@ -62,6 +76,11 @@ create table if not exists public.calendar_feeds (
   created_at timestamptz not null default now()
 );
 
+-- Solo tokens hexadecimales largos (los genera la app con crypto.getRandomValues).
+alter table public.calendar_feeds drop constraint if exists calendar_feeds_token_format;
+alter table public.calendar_feeds add constraint calendar_feeds_token_format
+  check (token ~ '^[0-9a-f]{32,128}$');
+
 alter table public.calendar_feeds enable row level security;
 
 drop policy if exists "calendar_feeds: solo el dueño" on public.calendar_feeds;
@@ -80,7 +99,7 @@ language sql stable security definer set search_path = '' as $$
   from public.sync_records r
   join public.calendar_feeds f on f.user_id = r.user_id
   where f.token = p_token
-    and length(p_token) >= 32
+    and p_token ~ '^[0-9a-f]{32,128}$'
     and r.tbl = 'gastos_expenses'
     and not r.deleted
     and r.data is not null;

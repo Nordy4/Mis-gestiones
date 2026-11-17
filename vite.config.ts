@@ -4,6 +4,33 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/** Único servidor externo con el que habla la app (datos, sesión y Edge Functions). */
+const SUPABASE_ORIGIN = 'https://qakodusxnrwkersrvgxt.supabase.co';
+
+/**
+ * Content-Security-Policy. GitHub Pages no deja poner cabeceras, así que va como <meta> en el
+ * build (en desarrollo no, porque Vite usa scripts en línea y websockets). Vercel la envía además
+ * como cabecera (vercel.json), donde también puede llevar frame-ancestors.
+ * - script-src 'self': solo los scripts de la app (el build no tiene scripts en línea).
+ * - img-src https:: fotos de productos de cualquier tienda (módulo Compras).
+ * - style-src 'unsafe-inline': estilos en línea de React/Recharts (no ejecutan código).
+ */
+export const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  `connect-src 'self' ${SUPABASE_ORIGIN}`,
+  "img-src 'self' data: blob: https:",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
+  "manifest-src 'self'",
+  "worker-src 'self'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  'upgrade-insecure-requests',
+].join('; ');
+
 // base './' + HashRouter: el mismo build funciona en Vercel, GitHub Pages
 // (en cualquier subcarpeta) o cualquier hosting estático, sin redirecciones.
 export default defineConfig({
@@ -17,6 +44,14 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    {
+      name: 'mi-vida-security-meta',
+      apply: 'build',
+      transformIndexHtml: () => [
+        { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: CSP }, injectTo: 'head-prepend' },
+        { tag: 'meta', attrs: { name: 'referrer', content: 'no-referrer' }, injectTo: 'head-prepend' },
+      ],
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],

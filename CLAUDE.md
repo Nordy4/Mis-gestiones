@@ -237,6 +237,17 @@ que un módulo nuevo se sincroniza solo, sin código extra.
 - `core/components/MonthCalendar` (+ `monthRange`, `shiftMonth`) — calendario mensual con días
   marcados y texto por día. (El calendario de Gym es anterior y aún no lo usa.)
 
+## Seguridad (ver `docs/SEGURIDAD.md`)
+
+- **Nunca** una clave secret/service_role en el código ni en Git. Solo la publishable.
+- Todo `href`/`src` con datos de usuario pasa por `safeHttpUrl` (core/lib/links): nada de `javascript:`.
+- CSP en `vite.config.ts` (`CSP`) y en `vercel.json`: si la app necesita hablar con otro dominio,
+  añádelo a `connect-src` en los dos sitios (si no, el navegador lo bloquea).
+- Validación en servidor: restricciones en `supabase/schema.sql`; Edge Functions con límites de
+  tamaño, CORS solo para la app (`ALLOWED_ORIGINS` en link-preview) y errores genéricos.
+- `calendar-feed` va sin JWT a propósito (token privado en la URL); `link-preview` con JWT.
+- Workflows: acciones fijadas por SHA y permisos mínimos.
+
 ## Despliegue
 
 - Build estático en `dist/` con rutas relativas (`base: './'`) + HashRouter → sirve en cualquier ruta.

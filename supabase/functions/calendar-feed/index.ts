@@ -25,8 +25,22 @@ interface Expense {
 
 const euro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 
-/** Escapa texto para iCalendar. */
-const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+/**
+ * Escapa texto para iCalendar. Quita los caracteres de control (incluido \r) para que un nombre
+ * manipulado no pueda inyectar líneas/eventos en el .ics; los \n se convierten en "\n" literal.
+ */
+const esc = (s: unknown, max = 300) =>
+  String(s ?? '')
+    .slice(0, max)
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+
+/** Solo caracteres seguros en el UID (los ids de la app son UUID). */
+const safeId = (s: unknown) => String(s ?? '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 64) || 'x';
 
 /** Pliega líneas largas (máx. 75 octetos por línea, continuación con espacio). */
 function fold(line: string): string {
@@ -58,7 +72,8 @@ function nextDay(d: string): string {
 }
 
 function stamp(iso: string | undefined): string {
-  const d = iso ? new Date(iso) : new Date();
+  const parsed = iso ? new Date(iso) : new Date();
+  const d = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
   return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 }
 
@@ -83,19 +98,20 @@ function toIcs(expenses: Expense[]): string {
   ];
   for (const e of expenses) {
     if (e.archivedAt || !/^\d{4}-\d{2}-\d{2}$/.test(e.startDate ?? '')) continue;
-    const amount = euro.format((e.amountCents ?? 0) / 100);
+    const cents = Number.isFinite(e.amountCents) ? Math.max(0, Math.min(e.amountCents, 1e10)) : 0;
+    const amount = euro.format(cents / 100);
     const periodLabel = e.period === 'yearly' ? 'Anual' : 'Mensual';
     const description = [`${periodLabel} · ${amount}`, e.note].filter(Boolean).join('\n');
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${e.id}@mi-vida`,
+      `UID:${safeId(e.id)}@mi-vida`,
       `DTSTAMP:${stamp(e.updatedAt)}`,
       `LAST-MODIFIED:${stamp(e.updatedAt)}`,
       `DTSTART;VALUE=DATE:${compactDate(e.startDate)}`,
       `DTEND;VALUE=DATE:${compactDate(nextDay(e.startDate))}`,
       rrule(e),
-      `SUMMARY:${esc(`${e.name} · ${amount}`)}`,
-      `DESCRIPTION:${esc(description)}`,
+      `SUMMARY:${esc(`${String(e.name ?? '').slice(0, 100)} · ${amount}`)}`,
+      `DESCRIPTION:${esc(description, 500)}`,
       'TRANSP:TRANSPARENT',
       'END:VEVENT',
     );
@@ -104,23 +120,31 @@ function toIcs(expenses: Expense[]): string {
   return lines.map(fold).join('\r\n') + '\r\n';
 }
 
+const TEXT_HEADERS = { 'Content-Type': 'text/plain; charset=utf-8', 'X-Content-Type-Options': 'nosniff' };
+
 Deno.serve(async (req) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return new Response('Método no permitido', { status: 405, headers: TEXT_HEADERS });
+  }
   const token = new URL(req.url).searchParams.get('token') ?? '';
-  if (!/^[0-9a-f]{32,128}$/i.test(token)) return new Response('Enlace no válido', { status: 404 });
+  if (!/^[0-9a-f]{32,128}$/.test(token)) return new Response('Enlace no válido', { status: 404, headers: TEXT_HEADERS });
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/gastos_feed_items`, {
     method: 'POST',
     headers: { apikey: PUBLISHABLE_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({ p_token: token }),
   });
-  if (!res.ok) return new Response('No se pudo leer el calendario', { status: 502 });
-  const items = (await res.json()) as Expense[];
+  if (!res.ok) return new Response('No se pudo leer el calendario', { status: 502, headers: TEXT_HEADERS });
+  const items = await res.json();
+  if (!Array.isArray(items)) return new Response('No se pudo leer el calendario', { status: 502, headers: TEXT_HEADERS });
 
-  return new Response(toIcs(items), {
+  return new Response(toIcs((items as Expense[]).slice(0, 500)), {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
       'Content-Disposition': 'inline; filename="gastos-fijos.ics"',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'private, no-cache',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'no-referrer',
     },
   });
 });
