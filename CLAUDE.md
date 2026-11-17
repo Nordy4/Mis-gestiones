@@ -23,7 +23,9 @@ Idioma de la UI y de los comentarios: **español**.
 - `npm run build` — comprueba tipos y genera `dist/` (incluye `sw.js` y `manifest.webmanifest`).
 - `npm run preview` — sirve `dist/` (con `--host`). Es la forma de probar la PWA/offline en local.
 - `npm run typecheck` — solo tipos.
-- `npm run icons` — regenera los PNG de `public/icons` (PowerShell, Windows).
+- `npm run icons` — regenera los PNG de `public/icons` (PowerShell, Windows). Logo "Órbita"
+  (arco morado con un punto, elegido por el usuario): el mismo dibujo en `public/favicon.svg` y en
+  `scripts/generate-icons.ps1`; si cambias uno, cambia el otro.
 
 En esta máquina Node y Git pueden no estar en el PATH de la shell de Claude. Refresca el PATH con:
 `$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")`.

@@ -1,5 +1,7 @@
 # Genera los iconos PNG de la PWA en public/icons (Windows, System.Drawing).
 # Uso: npm run icons
+# Logo "Órbita" (mismo dibujo que public/favicon.svg, en una rejilla de 120 x 120):
+# arco de círculo (centro 60,60, radio 28, de 0° a 300°) y un punto en (84,44).
 Add-Type -AssemblyName System.Drawing
 
 $out = Join-Path $PSScriptRoot '..\public\icons'
@@ -9,7 +11,7 @@ function New-Icon([int]$size, [string]$path, [double]$contentScale, [bool]$round
   $bmp = New-Object System.Drawing.Bitmap $size, $size
   $g = [System.Drawing.Graphics]::FromImage($bmp)
   $g.SmoothingMode = 'AntiAlias'
-  $g.TextRenderingHint = 'AntiAliasGridFit'
+  $g.PixelOffsetMode = 'HighQuality'
   $g.Clear([System.Drawing.Color]::Transparent)
 
   $bg = [System.Drawing.ColorTranslator]::FromHtml('#09090b')
@@ -18,7 +20,7 @@ function New-Icon([int]$size, [string]$path, [double]$contentScale, [bool]$round
   # Fondo
   $bgBrush = New-Object System.Drawing.SolidBrush $bg
   if ($rounded) {
-    $r = [int]($size * 0.22)
+    $r = [int]($size * 0.466) # mismo redondeo que el SVG (rx 28 de 120)
     $gp = New-Object System.Drawing.Drawing2D.GraphicsPath
     $gp.AddArc(0, 0, $r, $r, 180, 90)
     $gp.AddArc($size - $r, 0, $r, $r, 270, 90)
@@ -30,18 +32,18 @@ function New-Icon([int]$size, [string]$path, [double]$contentScale, [bool]$round
     $g.FillRectangle($bgBrush, 0, 0, $size, $size)
   }
 
-  # Círculo de acento
-  $d = [int]($size * $contentScale)
-  $o = [int](($size - $d) / 2)
-  $g.FillEllipse((New-Object System.Drawing.SolidBrush $accent), $o, $o, $d, $d)
+  # Dibujo en unidades de la rejilla de 120, escalado y centrado.
+  # contentScale 0.72 = tamaño del SVG; menos = más margen (iconos maskable).
+  $k = ($size / 120.0) * ($contentScale / 0.72)
+  $g.TranslateTransform($size / 2.0, $size / 2.0)
+  $g.ScaleTransform($k, $k)
+  $g.TranslateTransform(-60, -60)
 
-  # Texto "MV"
-  $font = New-Object System.Drawing.Font 'Segoe UI', ([float]($d * 0.36)), ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
-  $fmt = New-Object System.Drawing.StringFormat
-  $fmt.Alignment = 'Center'
-  $fmt.LineAlignment = 'Center'
-  $rect = New-Object System.Drawing.RectangleF 0, ([float]($size * 0.01)), $size, $size
-  $g.DrawString('MV', $font, (New-Object System.Drawing.SolidBrush $bg), $rect, $fmt)
+  $pen = New-Object System.Drawing.Pen $accent, 9
+  $pen.StartCap = 'Round'
+  $pen.EndCap = 'Round'
+  $g.DrawArc($pen, 32, 32, 56, 56, 0, 300)
+  $g.FillEllipse((New-Object System.Drawing.SolidBrush $accent), 77, 37, 14, 14)
 
   $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
   $g.Dispose(); $bmp.Dispose()

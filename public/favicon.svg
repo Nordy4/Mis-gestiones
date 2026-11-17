@@ -1,5 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#09090b"/>
-  <circle cx="32" cy="32" r="23" fill="#9d7bf5"/>
-  <text x="32" y="33" text-anchor="middle" dominant-baseline="middle" font-family="Segoe UI, Roboto, sans-serif" font-weight="700" font-size="17" fill="#09090b">MV</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- Logo "Órbita": el día a día en ciclo. Morado = acento de la app (#9d7bf5). -->
+  <rect width="120" height="120" rx="28" fill="#09090b"/>
+  <path d="M88 60 A28 28 0 1 1 74 35.75" fill="none" stroke="#9d7bf5" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="84" cy="44" r="7" fill="#9d7bf5"/>
 </svg>
