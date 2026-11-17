@@ -1,7 +1,8 @@
 # Mi Vida — guía para Claude
 
 PWA personal (uso en Android, una mano, modo oscuro) organizada como un **hub de módulos**:
-una tarjeta en el inicio por cada área de la vida. Módulos: **Gym**, **Deudas**, **Trabajo** y **Compras**.
+una tarjeta en el inicio por cada área de la vida. Módulos: **Gym**, **Deudas**, **Trabajo**, **Compras**
+y **Gastos fijos**.
 Idioma de la UI y de los comentarios: **español**.
 
 ## Stack
@@ -213,7 +214,24 @@ que un módulo nuevo se sincroniza solo, sin código extra.
   así que solo con sesión). Cliente en `core/lib/links.ts` (`fetchLinkPreview`, devuelve null si
   no hay sesión/conexión o la tienda bloquea). Las fotos se enlazan desde la tienda (no se guardan).
 
+### Módulo Gastos fijos
+
+- Rutas (`gastos/paths.ts`): `/gastos` (lista por próximo cargo, totales al mes y al año; los
+  anuales cuentan /12) y `/gastos/calendario` (enlace para Google Calendar).
+- Tabla `gastos_expenses`: `name`, `amountCents`, `period: 'monthly' | 'yearly'`, `startDate`
+  (fecha de un cargo: fija el día del mes o del año), `note`, `archivedAt` (borrar = archivar).
+  `lib/period.ts` → `nextCharge` (día 29–31 en meses cortos = último día del mes), `monthlyCents`.
+- **Google Calendar = suscripción iCal** (solo app → calendario): Edge Function
+  `supabase/functions/calendar-feed` (**sin verificación JWT**, la llama Google) genera un .ics con
+  un evento de todo el día por gasto y `RRULE` mensual/anual. Lee de `sync_records` mediante la
+  función SQL `gastos_feed_items(token)` (security definer, solo `gastos_expenses`). El token
+  privado vive en la tabla `calendar_feeds` (uno por usuario; se crea/rehace desde la app,
+  `data/calendarFeed.ts`). Requiere sesión iniciada (la nube es la fuente del calendario).
+  Google refresca las suscripciones cada varias horas.
+
 ### Componentes compartidos útiles para módulos nuevos
+
+- `core/components/MoneyField` — campo de importe en euros (Deudas, Gastos fijos).
 
 - `core/components/BottomTabs` — pestañas inferiores de un módulo.
 - `core/components/MonthCalendar` (+ `monthRange`, `shiftMonth`) — calendario mensual con días

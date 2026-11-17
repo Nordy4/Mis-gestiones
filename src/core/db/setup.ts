@@ -10,7 +10,8 @@ import { coreSchema, db, metaTable } from './db';
 // Historial: 1 = inicial · 2 = gym_sections · 3 = gym cronómetro + gym_weight_log · 4 = módulo deudas · 5 = módulo trabajo
 // · 6 = trabajo: comida (breakMinutes) en registros antiguos (solo migración de datos)
 // · 7 = core_sync_shadow (sincronización con Supabase) · 8 = módulo compras
-export const DB_VERSION = 8;
+// · 9 = módulo gastos fijos
+export const DB_VERSION = 9;
 
 let initialized: Promise<void> | null = null;
 

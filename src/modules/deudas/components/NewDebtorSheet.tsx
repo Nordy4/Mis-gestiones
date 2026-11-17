@@ -4,7 +4,7 @@ import { Field } from '@/core/components/Field';
 import { Button } from '@/core/components/Button';
 import { parseMoneyToCents, todayKey } from '@/core/lib/format';
 import type { MovementInput } from '../data/types';
-import { MoneyField } from './MoneyField';
+import { MoneyField } from '@/core/components/MoneyField';
 
 interface Props {
   open: boolean;

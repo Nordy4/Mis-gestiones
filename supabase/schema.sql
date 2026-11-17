@@ -52,3 +52,39 @@ $$;
 
 revoke all on function public.keepalive() from public;
 grant execute on function public.keepalive() to anon, authenticated;
+
+-- Calendario de Gastos fijos (suscripción desde Google Calendar).
+-- Cada usuario tiene un enlace privado con un token aleatorio. La Edge Function
+-- `calendar-feed` (sin sesión, la llama Google) usa el token para leer SOLO los gastos fijos.
+create table if not exists public.calendar_feeds (
+  user_id    uuid        primary key default auth.uid() references auth.users (id) on delete cascade,
+  token      text        not null unique check (length(token) >= 32),
+  created_at timestamptz not null default now()
+);
+
+alter table public.calendar_feeds enable row level security;
+
+drop policy if exists "calendar_feeds: solo el dueño" on public.calendar_feeds;
+create policy "calendar_feeds: solo el dueño" on public.calendar_feeds
+  for all to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+revoke all on public.calendar_feeds from anon;
+grant select, insert, update, delete on public.calendar_feeds to authenticated;
+
+-- Gastos fijos (no borrados) del dueño de un token. Solo la tabla gastos_expenses.
+create or replace function public.gastos_feed_items(p_token text) returns setof jsonb
+language sql stable security definer set search_path = '' as $$
+  select r.data
+  from public.sync_records r
+  join public.calendar_feeds f on f.user_id = r.user_id
+  where f.token = p_token
+    and length(p_token) >= 32
+    and r.tbl = 'gastos_expenses'
+    and not r.deleted
+    and r.data is not null;
+$$;
+
+revoke all on function public.gastos_feed_items(text) from public;
+grant execute on function public.gastos_feed_items(text) to anon, authenticated;
