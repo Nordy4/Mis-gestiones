@@ -30,6 +30,9 @@ export function ShiftList({ shifts, onSelect }: Props) {
                   {open ? 'Dentro' : s.note || 'Jornada'}
                   {s.breakMinutes > 0 && ` · comida ${formatHM(s.breakMinutes)}`}
                 </span>
+                {s.autoEnd && (
+                  <span className="block text-xs text-amber-300">Salida automática: no fichaste la salida</span>
+                )}
               </span>
               <span className="font-semibold tabular-nums">{open ? '…' : formatHM(shiftMinutes(s))}</span>
               <ChevronRight className="size-4 text-muted" />

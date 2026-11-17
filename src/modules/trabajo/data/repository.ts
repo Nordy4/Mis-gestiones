@@ -11,6 +11,11 @@ export interface TrabajoRepository {
   clockIn(): Promise<Shift>;
   /** Fichar salida ahora del tramo abierto. */
   clockOut(id: string): Promise<void>;
+  /**
+   * Si hay una entrada sin salida y ya pasó la hora de cierre automático, le pone la salida
+   * del horario (`lib/autoClose.ts`). Devuelve el tramo cerrado o null.
+   */
+  autoCloseForgotten(): Promise<Shift | null>;
 
   /** Tramos con fecha entre `from` y `to` (YYYY-MM-DD, incluidas), ordenados por entrada. */
   listShifts(from: string, to: string): Promise<Shift[]>;

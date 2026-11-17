@@ -18,4 +18,8 @@ export const trabajoData = {
   exportData: () => trabajoRepo.exportAll(),
   importData: (data: unknown) => trabajoRepo.importAll(parseTrabajoExport(data)),
   upgrade: upgradeTrabajoData,
+  /** Cierra las entradas sin salida pasadas las 22:00 (salida del horario). */
+  tick: async () => {
+    await trabajoRepo.autoCloseForgotten();
+  },
 };

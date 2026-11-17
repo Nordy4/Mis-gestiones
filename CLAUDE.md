@@ -177,6 +177,12 @@ que un módulo nuevo se sincroniza solo, sin código extra.
   del horario y los siguientes 0. "Añadir horas" prerrellena entrada/salida/comida según el día.
   La comida se puede cambiar en cada registro (No / 30 min / 1 h / 1 h 30 min). El total de hoy
   muestra "de 9 h".
+- **Salida automática** (`lib/autoClose.ts`): una entrada sin salida en día laborable se cierra
+  con la salida del horario (19:00 L–J, 15:00 V) a partir de las 22:00 de ese día, marcada
+  `autoEnd: true` ("Salida automática" en ámbar en la lista; editar el registro la quita). No se
+  toca si entraste después de esa hora ni en fin de semana. Lo lanza el `tick` del módulo
+  (`ModuleData.tick`, `core/lib/moduleTasks.ts`: al abrir, al volver a la app y cada minuto):
+  una PWA no ejecuta nada con la app cerrada, así que se aplica al abrirla.
 - **Horas extra** (`lib/balance.ts`): saldo acumulado = Σ por día (trabajado − jornada). Solo
   cuentan días con registros (sin registro = vacaciones/festivo, no resta), ni futuros ni con un
   tramo abierto (no resta la jornada a media mañana). Fin de semana: jornada 0, todo suma. La

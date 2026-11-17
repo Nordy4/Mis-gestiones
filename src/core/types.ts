@@ -21,6 +21,11 @@ export interface ModuleData {
    * comprobar el formato de los datos en vez de suponer de qué versión vienen.
    */
   upgrade?(tx: Transaction): Promise<void>;
+  /**
+   * Tarea periódica del módulo (core/lib/moduleTasks.ts): al abrir la app, al volver a ella
+   * y cada minuto mientras está abierta. Debe ser rápida e idempotente.
+   */
+  tick?(): Promise<void>;
 }
 
 /** Definición de un módulo del hub. Se registra en src/modules/registry.ts. */

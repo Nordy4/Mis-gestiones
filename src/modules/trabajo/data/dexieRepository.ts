@@ -6,6 +6,7 @@ import type { Shift } from './types';
 import { normalizeShifts } from './normalize';
 import { dayOf } from '../lib/time';
 import { scheduleFor } from '../lib/schedule';
+import { autoCloseEnd } from '../lib/autoClose';
 
 const shifts = () => db.table<Shift, string>('trabajo_shifts');
 
@@ -41,6 +42,17 @@ export const dexieTrabajoRepository: TrabajoRepository = {
     await shifts().update(id, { endAt: now, updatedAt: now });
   },
 
+  async autoCloseForgotten() {
+    return db.transaction('rw', shifts(), async () => {
+      const open = await findOpen();
+      const endAt = open && autoCloseEnd(open);
+      if (!open || !endAt) return null;
+      const closed: Shift = { ...open, endAt, autoEnd: true, updatedAt: nowIso() };
+      await shifts().put(closed);
+      return closed;
+    });
+  },
+
   async listShifts(from, to) {
     const list = await shifts().where('date').between(from, to, true, true).toArray();
     return list.sort((a, b) => a.startAt.localeCompare(b.startAt));
@@ -58,6 +70,7 @@ export const dexieTrabajoRepository: TrabajoRepository = {
       ...input,
       date: dayOf(input.startAt),
       note: input.note.trim(),
+      autoEnd: false,
       updatedAt: nowIso(),
     });
   },

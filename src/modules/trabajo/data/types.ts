@@ -16,6 +16,8 @@ export interface Shift {
   breakMinutes: number;
   /** Nota opcional ("Guardia", "Teletrabajo"…). */
   note: string;
+  /** La salida la puso la app (olvidaste fichar; ver `lib/autoClose.ts`). Se quita al editar. */
+  autoEnd?: boolean;
   createdAt: string;
   updatedAt: string;
 }
