@@ -242,8 +242,11 @@ que un módulo nuevo se sincroniza solo, sin código extra.
   circular, duración en marcha y preferencias → Edge Function `supabase/functions/route-ai`
   (verifica JWT **y** exige rol `authenticated`: la clave anon legacy también es un JWT válido).
   Geocodifica con **OpenRouteService**, **Gemini** propone ≤ 8 paradas por secundarias con curvas
-  (le pasamos la ruta directa y los km objetivo: sola calcula mal las distancias), ORS calcula la
-  duración real evitando autopistas y, si se desvía > 20 %, Gemini corrige (hasta 2 veces).
+  (le pasamos la ruta directa y los km objetivo: sola calcula mal las distancias). **Autovía
+  permitida para el acercamiento** (salir de la ciudad hasta la zona buena, o llegar al destino) y
+  enlaces cortos (~15-20 km), nunca tramos largos dentro de la ruta (petición del usuario). ORS
+  calcula la duración por el camino más rápido entre paradas (como Google, sin evitar autopistas)
+  y, si se desvía > 20 %, Gemini corrige (hasta 2 veces).
   Nivel gratuito de Gemini: la búsqueda de Google da 429 y los Flash suelen dar 503/tardar, así que
   se prueba Flash con búsqueda → Flash sin búsqueda (20 s) → `gemini-flash-lite-latest` (el que
   responde, ~2 s). En las pruebas: 10–35 s por ruta. Devuelve un enlace

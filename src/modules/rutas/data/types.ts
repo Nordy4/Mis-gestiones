@@ -33,7 +33,7 @@ export interface AiRoute {
   start: string;
   end: string | null;
   targetMinutes: number;
-  /** Calculado con OpenRouteService evitando autopistas (null si no se pudo calcular). */
+  /** Calculado con OpenRouteService pasando por las paradas (null si no se pudo calcular). */
   minutes: number | null;
   km: number | null;
   stops: { name: string; road: string }[];

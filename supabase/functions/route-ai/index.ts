@@ -3,12 +3,13 @@
 // y un enlace de Google Maps que pasa por ellas. Solo con sesión (verificación JWT activada).
 //
 // 1. Geocodifica inicio y final con OpenRouteService (ORS).
-// 2. Gemini propone paradas por carreteras secundarias asfaltadas y con curvas, evitando autopistas
-//    y autovías. Intenta con búsqueda de Google (no entra en el nivel gratuito) y, si no, sin ella o
-//    con el modelo de reserva Flash-Lite (los Flash del nivel gratuito suelen ir saturados).
+// 2. Gemini propone paradas por carreteras secundarias asfaltadas y con curvas. Autopistas/autovías
+//    solo para el acercamiento (p. ej. salir de la ciudad) o enlaces cortos, no tramos largos.
+//    Intenta con búsqueda de Google (no entra en el nivel gratuito) y, si no, sin ella o con el
+//    modelo de reserva Flash-Lite (los Flash del nivel gratuito suelen ir saturados).
 // 3. Cada parada se sitúa con el geocodificador de ORS (o las coordenadas de Gemini si no cuadra).
-// 4. ORS calcula la ruta real evitando autopistas: duración y distancia. Si se aleja más de un
-//    20 % de lo pedido, Gemini corrige las paradas (hasta 2 veces).
+// 4. ORS calcula la ruta real (camino más rápido entre paradas, como hará Google): duración y
+//    distancia. Si se aleja más de un 20 % de lo pedido, Gemini corrige las paradas (hasta 2 veces).
 //
 // Secretos (Supabase → Edge Functions → Secrets): GEMINI_API_KEY, ORS_API_KEY y, opcional,
 // GEMINI_MODEL (por defecto "gemini-flash-latest").
@@ -119,41 +120,45 @@ async function geocode(key: string, text: string, focus?: Point): Promise<Place 
   return { lat, lng, label: clean(f?.properties?.label, 120) || text };
 }
 
-/** Duración (min) y distancia (km) en coche evitando autopistas. */
+/**
+ * Duración (min) y distancia (km) en coche pasando por los puntos, por el camino más rápido entre
+ * cada par (autovías incluidas), que es lo que hará Google Maps con el enlace.
+ */
 async function directions(key: string, points: Point[]): Promise<{ minutes: number; km: number } | null> {
-  const call = async (avoid: boolean) => {
-    const res = await fetch(`${ORS}/v2/directions/driving-car`, {
-      method: 'POST',
-      headers: { Authorization: key, 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        coordinates: points.map((p) => [p.lng, p.lat]),
-        ...(avoid ? { options: { avoid_features: ['highways'] } } : {}),
-      }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!res.ok) return null;
-    const s = (await res.json())?.routes?.[0]?.summary;
-    if (typeof s?.duration !== 'number' || typeof s?.distance !== 'number') return null;
-    return { minutes: Math.round(s.duration / 60), km: Math.round(s.distance / 100) / 10 };
-  };
-  // Si ORS no puede evitar autopistas en algún tramo, calcula sin esa opción.
-  return (await call(true)) ?? (await call(false));
+  const res = await fetch(`${ORS}/v2/directions/driving-car`, {
+    method: 'POST',
+    headers: { Authorization: key, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ coordinates: points.map((p) => [p.lng, p.lat]) }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) return null;
+  const s = (await res.json())?.routes?.[0]?.summary;
+  if (typeof s?.duration !== 'number' || typeof s?.distance !== 'number') return null;
+  return { minutes: Math.round(s.duration / 60), km: Math.round(s.distance / 100) / 10 };
 }
 
 // ───────────── Gemini ─────────────
 
 const SYSTEM = `Eres un experto en rutas en moto (sobre todo en España, Andorra, Francia y Portugal).
-Diseñas rutas para disfrutar conduciendo: carreteras secundarias, comarcales y puertos de montaña
-ASFALTADOS y con muchas curvas, con buen firme y paisaje. Evitas autopistas y autovías (AP-, A-, E-,
-C-xx desdobladas, rondas y circunvalaciones) salvo un tramo muy corto si es imprescindible. Nunca
+Diseñas rutas para disfrutar conduciendo: la mayor parte del tiempo por carreteras secundarias,
+comarcales y puertos de montaña ASFALTADOS y con muchas curvas, con buen firme y paisaje. Nunca
 pistas de tierra ni caminos sin asfaltar. Evitas atravesar ciudades grandes.
 
+Autopistas y autovías (AP-, A-, E-, C-xx desdobladas): se pueden usar, pero NO en tramos largos.
+- Para el ACERCAMIENTO está bien: si desde la salida hay que cruzar una zona aburrida o urbana para
+  llegar a las carreteras buenas, ve por autopista/autovía hasta allí (igual al volver o para
+  llegar al destino final si queda lejos de la zona buena).
+- Dentro de la parte bonita de la ruta, evítalas: como mucho tramos cortos para enlazar dos
+  carreteras buenas (unos 15-20 km).
+- Nunca la mayor parte de la ruta por autopista o autovía.
+
 Devuelves las paradas intermedias (waypoints) en orden, que obliguen al navegador a ir por esas
-carreteras: pueblos, cruces o puertos situados SOBRE la carretera elegida. Pon más paradas donde haya
-varias opciones de carretera para que el GPS no se salga de la ruta. No repitas tramos: evita ir y
-volver por la misma carretera (en las circulares, vuelve por otro camino). Si puedes, usa la búsqueda
-para comprobar nombres y carreteras reales. Calcula a ritmo de moto tranquilo por secundarias (unos
-50-60 km/h de media).
+carreteras: pueblos, cruces o puertos situados SOBRE la carretera elegida. La primera parada debe
+estar al principio de la zona buena (el navegador irá por el camino rápido hasta ella). Pon más
+paradas donde haya varias opciones de carretera para que el GPS no se salga de la ruta. No repitas
+tramos: evita ir y volver por la misma carretera (en las circulares, vuelve por otro camino). Si
+puedes, usa la búsqueda para comprobar nombres y carreteras reales. Calcula a ritmo de moto
+tranquilo: unos 50-60 km/h de media por secundarias y unos 100 km/h por autovía.
 
 Responde SOLO con un objeto JSON, sin texto antes ni después, con esta forma:
 {"name": "nombre corto y evocador de la ruta",
@@ -349,17 +354,17 @@ Deno.serve(async (req) => {
     const end = circular ? start : await geocode(orsKey, endText, start);
     if (!end) throw new UserError('No encuentro la dirección final.');
 
-    // Escala real para la IA (calcula mal las distancias): ruta directa y km aproximados por
-    // secundarias (en las pruebas, ~40 km/h de media según ORS).
+    // Escala real para la IA (calcula mal las distancias): ruta directa y km aproximados
+    // (por secundarias, en las pruebas, ~40 km/h de media según ORS).
     const direct = circular ? null : await directions(orsKey, [start, end]).catch(() => null);
     const ask =
       `Diseña una ruta en moto ${circular ? 'CIRCULAR (vuelve al punto de salida)' : 'de ida'}.\n` +
       `Salida: ${startText} (${start.label}; ${fmt(start.lat)}, ${fmt(start.lng)}).\n` +
       (circular ? '' : `Llegada: ${endText} (${end.label}; ${fmt(end.lat)}, ${fmt(end.lng)}).\n`) +
-      `Duración deseada en marcha (sin paradas): ${hm(minutes)}, es decir, unos ${Math.round(minutes * 0.65)} km ` +
-      `en total por secundarias.\n` +
+      `Duración deseada en marcha (sin paradas): ${hm(minutes)}. Como referencia, eso son unos ` +
+      `${Math.round(minutes * 0.65)} km si fuera todo por secundarias (más si parte es acercamiento por autovía).\n` +
       (direct
-        ? `Referencia: el camino más directo sin autopistas tarda ${hm(direct.minutes)} (${direct.km} km); ` +
+        ? `Referencia: el camino más rápido de salida a llegada tarda ${hm(direct.minutes)} (${direct.km} km); ` +
           `${direct.minutes >= minutes ? 'no hay margen para desvíos largos' : `tienes unos ${hm(minutes - direct.minutes)} para desviarte por carreteras mejores`}.\n`
         : '') +
       (notes ? `Preferencias del motorista: ${notes}\n` : '');
@@ -397,10 +402,11 @@ Deno.serve(async (req) => {
         parts: [
           {
             text:
-              `Calculada la ruta real evitando autopistas, sale ${hm(route.minutes)} (${route.km} km) y ` +
+              `Calculada la ruta real (camino más rápido entre tus paradas), sale ${hm(route.minutes)} (${route.km} km) y ` +
               `quiero unas ${hm(minutes)} (unos ${Math.round((route.km * minutes) / Math.max(route.minutes, 1))} km). ` +
               `${route.minutes > minutes ? 'Acórtala quitando o acercando paradas' : 'Alárgala con un desvío por más carreteras con curvas'}` +
-              `, sin ir y volver por la misma carretera. Devuelve el JSON completo otra vez.`,
+              `, sin ir y volver por la misma carretera y sin tramos largos de autopista fuera del acercamiento. ` +
+              `Devuelve el JSON completo otra vez.`,
           },
         ],
       });

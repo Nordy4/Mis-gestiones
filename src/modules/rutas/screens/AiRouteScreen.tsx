@@ -67,7 +67,7 @@ export function AiRouteScreen() {
   );
 
   return (
-    <Screen title="Ruta con IA" subtitle="Secundarias con curvas, sin autopistas" backTo={rutasPaths.list} footer={footer}>
+    <Screen title="Ruta con IA" subtitle="Secundarias con curvas" backTo={rutasPaths.list} footer={footer}>
       {signedOut && (
         <p className="mb-4 rounded-2xl border border-border/60 bg-surface p-4 text-sm text-muted">
           Para crear rutas con IA inicia sesión en{' '}
@@ -204,8 +204,8 @@ export function AiRouteScreen() {
             <ExternalLink className="size-5" /> Abrir en Google Maps
           </a>
           <p className="text-xs text-muted">
-            Consejo: en Google Maps toca ⋮ → Opciones de ruta → «Evitar autopistas» para que entre paradas no te
-            meta por autovía.
+            La autovía solo se usa para acercarte a la zona buena o en enlaces cortos. Si quieres evitarla del
+            todo, en Google Maps toca ⋮ → Opciones de ruta → «Evitar autopistas».
           </p>
         </div>
       )}
