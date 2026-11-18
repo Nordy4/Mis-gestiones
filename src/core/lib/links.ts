@@ -33,6 +33,21 @@ export function safeHttpUrl(value: string | null | undefined): string | null {
   return isHttpUrl(value.trim()) ? value.trim() : null;
 }
 
+/**
+ * ¿Es un enlace de Google Maps? (lo que da "Compartir" en la app de Maps: maps.app.goo.gl/…,
+ * goo.gl/maps/…, google.es/maps/…, maps.google.com/…).
+ */
+export function isGoogleMapsUrl(value: string | null | undefined): boolean {
+  const url = safeHttpUrl(value);
+  if (!url) return false;
+  const u = new URL(url);
+  const host = u.hostname.toLowerCase().replace(/^www\./, '');
+  if (host === 'maps.app.goo.gl') return true;
+  if (host === 'goo.gl' && u.pathname.startsWith('/maps')) return true;
+  if (/^maps\.google\.[a-z.]+$/.test(host)) return true;
+  return /^google\.[a-z.]+$/.test(host) && u.pathname.startsWith('/maps');
+}
+
 /** "https://www.zara.com/es/..." → "zara.com" */
 export function siteOf(url: string): string {
   try {

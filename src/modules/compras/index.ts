@@ -12,8 +12,8 @@ export const comprasModule: ModuleDefinition = {
   color: 'bg-accent/15 text-accent',
   path: 'compras',
   routes: comprasRoutes,
-  // Recibe los enlaces que compartes desde otras apps (Android → Compartir → Mi Vida).
-  shareTarget: '',
+  // Destino por defecto de lo que compartes desde otras apps (Android → Compartir → Mi Vida).
+  shareTarget: { path: '' },
   data: {
     schema: comprasSchema,
     ...comprasData,

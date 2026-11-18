@@ -28,6 +28,24 @@ export interface ModuleData {
   tick?(): Promise<void>;
 }
 
+/** Lo que llega al compartir algo con la app. `link` = primer enlace http(s) encontrado. */
+export interface SharedData {
+  url: string | null;
+  title: string | null;
+  text: string | null;
+  link: string | null;
+}
+
+export interface ShareTarget {
+  /** Ruta relativa al módulo que recibe lo compartido ('' = su pantalla principal). */
+  path: string;
+  /**
+   * Si se define, el módulo solo recibe lo que cumpla esto (p. ej. enlaces de Google Maps) y
+   * tiene prioridad. El módulo SIN `accepts` es el destino por defecto (debe haber como mucho uno).
+   */
+  accepts?: (shared: SharedData) => boolean;
+}
+
 /** Definición de un módulo del hub. Se registra en src/modules/registry.ts. */
 export interface ModuleDefinition {
   /** Identificador único, en minúsculas y sin espacios. También es el prefijo de sus tablas. */
@@ -42,10 +60,9 @@ export interface ModuleDefinition {
   /** Rutas relativas a `path` ('' = pantalla principal del módulo). */
   routes: RouteObject[];
   /**
-   * Si se define, este módulo recibe lo que se comparte con la app (Android → Compartir →
-   * Mi Vida). Ruta relativa al módulo ('' = su pantalla principal); llega con
-   * `?url=&title=&text=` (ver core/lib/shareTarget.ts). Solo un módulo puede tenerlo.
+   * Si se define, este módulo puede recibir lo que se comparte con la app (Android →
+   * Compartir → Mi Vida). Llega a su ruta con `?url=&title=&text=` (core/lib/shareTarget.ts).
    */
-  shareTarget?: string;
+  shareTarget?: ShareTarget;
   data?: ModuleData;
 }

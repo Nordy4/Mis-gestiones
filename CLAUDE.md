@@ -1,8 +1,8 @@
 # Mi Vida — guía para Claude
 
 PWA personal (uso en Android, una mano, modo oscuro) organizada como un **hub de módulos**:
-una tarjeta en el inicio por cada área de la vida. Módulos: **Gym**, **Deudas**, **Trabajo**, **Compras**
-y **Gastos fijos**.
+una tarjeta en el inicio por cada área de la vida. Módulos: **Gym**, **Deudas**, **Trabajo**, **Compras**,
+**Gastos fijos** y **Rutas**.
 Idioma de la UI y de los comentarios: **español**.
 
 ## Stack
@@ -206,8 +206,9 @@ que un módulo nuevo se sincroniza solo, sin código extra.
   "Añadir enlace". Tabla `compras_products` (`url`, `title`, `imageUrl`, `site`).
 - **Compartir desde Android**: `share_target` (GET `./?title=&text=&url=`) en el manifest
   (`vite.config.ts`). `core/lib/shareTarget.ts` (antes de montar el router, que por eso se crea
-  dentro de `<App/>`) lo pasa a la ruta del módulo con `shareTarget` (`/compras?url=…`) y la
-  pantalla abre `ProductSheet` prerrellenado. Muchas apps mandan el enlace dentro de `text`
+  dentro de `<App/>`) elige el módulo: el primero cuyo `shareTarget.accepts(shared)` lo acepte
+  (Rutas: enlaces de Google Maps) o, si ninguno, el que tiene `shareTarget` sin `accepts`
+  (Compras, destino por defecto). La pantalla abre `ProductSheet` prerrellenado. Muchas apps mandan el enlace dentro de `text`
   (`extractUrl`). Solo funciona con la PWA instalada.
 - **Vista previa** (nombre, foto, tienda): Edge Function `supabase/functions/link-preview`
   (Open Graph; se despliega desde el panel de Supabase → Edge Functions → Via Editor; verifica JWT,
@@ -229,6 +230,14 @@ que un módulo nuevo se sincroniza solo, sin código extra.
   privado vive en la tabla `calendar_feeds` (uno por usuario; se crea/rehace desde la app,
   `data/calendarFeed.ts`). Requiere sesión iniciada (la nube es la fuente del calendario).
   Google refresca las suscripciones cada varias horas.
+
+### Módulo Rutas (rutas en moto)
+
+- Ruta `/rutas`: lista por nombre (tocar abre Google Maps, lápiz edita/borra) y "Añadir ruta".
+  Tabla `rutas_routes` (`name`, `url`, `archivedAt`; borrar = archivar).
+- Recibe lo compartido desde Google Maps (`shareTarget.accepts` con `isGoogleMapsUrl` de
+  core/lib/links: maps.app.goo.gl, goo.gl/maps, google.*/maps, maps.google.*). Abre `RouteSheet`
+  con el enlace puesto y el foco en el nombre (obligatorio). Acepta otros enlaces http(s) con aviso.
 
 ### Componentes compartidos útiles para módulos nuevos
 
