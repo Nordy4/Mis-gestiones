@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
-import { MapPinned, Pencil, Plus, Route } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router';
+import { MapPinned, Pencil, Plus, Route, Sparkles } from 'lucide-react';
 import { Screen } from '@/core/components/Screen';
 import { Button, IconButton } from '@/core/components/Button';
 import { EmptyState } from '@/core/components/EmptyState';
@@ -9,6 +9,7 @@ import { extractUrl, safeHttpUrl } from '@/core/lib/links';
 import { rutasRepo, useRoutes } from '../data/hooks';
 import type { MotoRoute } from '../data/types';
 import { RouteSheet } from '../components/RouteSheet';
+import { rutasPaths } from '../paths';
 
 function RouteRow({ r, onEdit }: { r: MotoRoute; onEdit: () => void }) {
   // Solo enlaces http(s): nunca `javascript:` ni otros esquemas (XSS).
@@ -48,6 +49,7 @@ function RouteRow({ r, onEdit }: { r: MotoRoute; onEdit: () => void }) {
 /** Lista de rutas en moto. Recibe los enlaces que compartes desde Google Maps. */
 export function RoutesScreen() {
   const routes = useRoutes();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [adding, setAdding] = useState<{ url: string; name: string } | null>(null);
   const [editing, setEditing] = useState<MotoRoute | null>(null);
@@ -75,15 +77,20 @@ export function RoutesScreen() {
       subtitle="Mis rutas en moto"
       backTo="/"
       footer={
-        <Button size="lg" block onClick={() => setAdding({ url: '', name: '' })}>
-          <Plus className="size-5" /> Añadir ruta
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="secondary" size="lg" block onClick={() => setAdding({ url: '', name: '' })}>
+            <Plus className="size-5" /> Añadir
+          </Button>
+          <Button size="lg" block onClick={() => navigate(rutasPaths.ai)}>
+            <Sparkles className="size-5" /> Crear con IA
+          </Button>
+        </div>
       }
     >
       {routes && routes.length === 0 && (
         <EmptyState icon={Route} title="Aún no tienes rutas">
           En Google Maps, abre tu ruta y pulsa Compartir → Mi Vida. También puedes pegar el enlace con el botón de
-          abajo.
+          abajo, o pulsa «Crear con IA» para que te diseñe una por secundarias con curvas.
         </EmptyState>
       )}
 

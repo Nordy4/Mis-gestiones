@@ -8,4 +8,6 @@ import type { RutasRepository } from './repository';
  */
 export const rutasRepo: RutasRepository = dexieRutasRepository;
 
-export const useRoutes = () => useLiveQuery(() => rutasRepo.listRoutes(), []);
+export { generateAiRoute, type AiRouteResult } from './aiRoute';
+
+export const useRoutes =() => useLiveQuery(() => rutasRepo.listRoutes(), []);

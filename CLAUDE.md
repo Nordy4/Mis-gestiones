@@ -238,6 +238,14 @@ que un módulo nuevo se sincroniza solo, sin código extra.
 - Recibe lo compartido desde Google Maps (`shareTarget.accepts` con `isGoogleMapsUrl` de
   core/lib/links: maps.app.goo.gl, goo.gl/maps, google.*/maps, maps.google.*). Abre `RouteSheet`
   con el enlace puesto y el foco en el nombre (obligatorio). Acepta otros enlaces http(s) con aviso.
+- **Ruta con IA** (`/rutas/ia`, `AiRouteScreen`; rutas en `rutas/paths.ts`): salida, llegada o
+  circular, duración en marcha y preferencias → Edge Function `supabase/functions/route-ai`
+  (verifica JWT, solo con sesión). Geocodifica con **OpenRouteService**, **Gemini** (con búsqueda de
+  Google) propone ≤ 8 paradas por secundarias con curvas, ORS calcula la duración real evitando
+  autopistas y, si se desvía > 20 %, Gemini corrige una vez. Devuelve un enlace
+  `google.com/maps/dir/?api=1` con las paradas en coordenadas (Google admite 9). Secretos en Supabase:
+  `GEMINI_API_KEY`, `ORS_API_KEY` y opcional `GEMINI_MODEL` (por defecto `gemini-flash-latest`).
+  Cliente: `data/aiRoute.ts`. La ruta solo se guarda si pulsas «Guardar ruta» (nombre + enlace).
 
 ### Componentes compartidos útiles para módulos nuevos
 
