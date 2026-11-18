@@ -64,7 +64,7 @@ export function ExerciseFormSheet({
 
   const chip = (active: boolean) =>
     `h-10 rounded-full px-4 text-sm font-medium ${
-      active ? 'bg-accent text-black' : 'bg-surface-2 text-text active:bg-border'
+      active ? 'bg-accent-gradient text-white' : 'bg-surface-2 text-text active:bg-white/15'
     }`;
 
   return (

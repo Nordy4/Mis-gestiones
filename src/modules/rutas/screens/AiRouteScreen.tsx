@@ -130,7 +130,7 @@ export function AiRouteScreen() {
                     onClick={() => setMinutes(d)}
                     aria-pressed={minutes === d}
                     className={`h-11 rounded-xl px-4 text-sm font-semibold ${
-                      minutes === d ? 'bg-accent text-black' : 'bg-surface-2 text-text active:bg-border'
+                      minutes === d ? 'bg-accent-gradient text-white' : 'bg-surface-2 text-text active:bg-white/15'
                     }`}
                   >
                     {hm(d)}

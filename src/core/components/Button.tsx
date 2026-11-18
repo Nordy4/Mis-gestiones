@@ -4,8 +4,8 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'warning';
 type Size = 'md' | 'lg';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-accent text-black active:bg-accent-strong',
-  secondary: 'bg-surface-2 text-text active:bg-border',
+  primary: 'bg-accent-gradient text-white shadow-lg shadow-accent-strong/30 active:brightness-90',
+  secondary: 'bg-surface-2 text-text active:bg-white/15',
   ghost: 'bg-transparent text-text active:bg-surface-2',
   danger: 'bg-danger/15 text-danger active:bg-danger/25',
   /** Acción principal "de cierre" (p. ej. fichar salida), distinta de la morada de inicio. */
@@ -34,7 +34,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors select-none disabled:opacity-40 ${variants[variant]} ${sizes[size]} ${block ? 'w-full' : ''} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-colors select-none disabled:opacity-40 ${variants[variant]} ${sizes[size]} ${block ? 'w-full' : ''} ${className}`}
       {...props}
     />
   );

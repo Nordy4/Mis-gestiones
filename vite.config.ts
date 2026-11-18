@@ -64,8 +64,8 @@ export default defineConfig({
         scope: './',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#09090b',
-        theme_color: '#09090b',
+        background_color: '#141418',
+        theme_color: '#141418',
         // Aparece en el menú Compartir de Android (con la app instalada). Ver core/lib/shareTarget.ts.
         share_target: {
           action: './',

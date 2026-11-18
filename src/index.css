@@ -1,13 +1,18 @@
 @import "tailwindcss";
 
-/* Paleta de la app. Modo oscuro por defecto (único modo por ahora). */
+/*
+ * Paleta de la app. Modo oscuro (único modo por ahora). Estética "Aurora" (glass):
+ * fondo gris muy oscuro con una aurora morada arriba; superficies translúcidas (cristal) que
+ * dejan ver la aurora. surface/surface-2/border son blancos con transparencia, así que funcionan
+ * sobre cualquier fondo. Para paneles que tapan contenido usar `glass-panel` (más opaco + blur).
+ */
 @theme {
-  --color-bg: #09090b;
-  --color-surface: #18181b;
-  --color-surface-2: #27272a;
-  --color-border: #3f3f46;
-  --color-text: #fafafa;
-  --color-muted: #a1a1aa;
+  --color-bg: #141418;
+  --color-surface: rgb(255 255 255 / 0.06);
+  --color-surface-2: rgb(255 255 255 / 0.1);
+  --color-border: rgb(255 255 255 / 0.14);
+  --color-text: #f4f4f6;
+  --color-muted: #a6a6b2;
   /* Acento de toda la app: el mismo morado que identifica a Goyo en Gym. */
   --color-accent: #9d7bf5;
   --color-accent-strong: #8160ea;
@@ -26,7 +31,15 @@
     height: 100%;
   }
   body {
-    @apply bg-bg text-text font-sans antialiased;
+    @apply text-text font-sans antialiased;
+    /* Aurora morada/índigo arriba sobre el gris. El body no hace scroll (lo hace <main>),
+       así que la aurora se queda quieta detrás del contenido. */
+    background:
+      radial-gradient(60% 38% at 22% 0%, rgb(139 92 246 / 0.42), transparent 75%),
+      radial-gradient(45% 32% at 88% 4%, rgb(99 102 241 / 0.32), transparent 75%),
+      radial-gradient(40% 26% at 60% 22%, rgb(192 132 252 / 0.16), transparent 75%),
+      var(--color-bg);
+    background-color: var(--color-bg);
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: none;
   }
@@ -50,6 +63,28 @@
   input[type="number"] {
     -moz-appearance: textfield;
   }
+}
+
+/* Tarjeta de cristal destacada (inicio, resúmenes): degradado translúcido, borde claro y sombra. */
+@utility glass-card {
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.03));
+  border: 1px solid rgb(255 255 255 / 0.14);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.25);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+}
+
+/* Panel de cristal que tapa contenido (barra inferior, paneles que suben): más opaco. */
+@utility glass-panel {
+  background: rgb(30 30 38 / 0.72);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+}
+
+/* Degradado morado de la marca: botón principal y cuadros de icono del inicio. */
+@utility bg-accent-gradient {
+  background-image: linear-gradient(135deg, #a78bfa, #7c3aed);
 }
 
 @utility pb-safe {

@@ -94,7 +94,7 @@ export function CalendarScreen() {
                 aria-label={`${formatDateLong(day)}${trained ? ', entrenado' : ''}`}
                 aria-pressed={isSelected}
                 className={`relative grid aspect-square place-items-center rounded-xl text-sm tabular-nums ${
-                  trained ? 'bg-accent font-bold text-black' : 'text-text active:bg-surface-2'
+                  trained ? 'bg-accent-gradient font-bold text-white' : 'text-text active:bg-surface-2'
                 } ${isSelected ? 'ring-2 ring-text ring-offset-2 ring-offset-surface' : ''} ${
                   isToday && !trained ? 'font-bold text-accent' : ''
                 }`}

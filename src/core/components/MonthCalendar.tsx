@@ -88,7 +88,7 @@ export function MonthCalendar({
               aria-label={`${formatDateLong(day)}${extra ? `, ${extra}` : ''}`}
               aria-pressed={day === selected}
               className={`flex aspect-square flex-col items-center justify-center rounded-xl text-sm tabular-nums ${
-                marked ? 'bg-accent font-bold text-black' : 'text-text active:bg-surface-2'
+                marked ? 'bg-accent-gradient font-bold text-white' : 'text-text active:bg-surface-2'
               } ${day === selected ? 'ring-2 ring-text ring-offset-2 ring-offset-surface' : ''} ${
                 day === today && !marked ? 'font-bold text-accent' : ''
               }`}

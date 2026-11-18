@@ -13,7 +13,7 @@ export interface BottomTab {
 export function BottomTabs({ tabs, label }: { tabs: BottomTab[]; label: string }) {
   return (
     <nav
-      className="-mx-4 -mt-3 grid"
+      className="grid gap-1"
       style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
       aria-label={label}
     >
@@ -24,8 +24,8 @@ export function BottomTabs({ tabs, label }: { tabs: BottomTab[]; label: string }
           end={end}
           replace
           className={({ isActive }) =>
-            `flex h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
-              isActive ? 'text-accent' : 'text-muted active:text-text'
+            `flex h-14 flex-col items-center justify-center gap-0.5 rounded-2xl text-xs font-medium ${
+              isActive ? 'bg-accent/15 text-accent' : 'text-muted active:text-text'
             }`
           }
         >

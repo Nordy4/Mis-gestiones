@@ -11,6 +11,13 @@ Idioma de la UI y de los comentarios: **español**.
 - Tailwind CSS 4 vía `@tailwindcss/vite`. Tokens de color en `src/index.css` (`@theme`):
   `bg`, `surface`, `surface-2`, `border`, `text`, `muted`, `accent`, `accent-strong`, `danger`.
   Usa siempre estos tokens (`bg-surface`, `text-muted`…) en vez de colores sueltos.
+- **Estética "Aurora" (glass, elegida por el usuario)**: fondo gris `#141418` con aurora
+  morada/índigo arriba (degradados en el `body`, que no hace scroll); `surface`, `surface-2` y
+  `border` son blancos translúcidos (cristal). Utilidades en `index.css`: `glass-card` (tarjetas
+  destacadas, p. ej. inicio), `glass-panel` (barra inferior flotante y `Sheet`) y
+  `bg-accent-gradient` (botón principal, iconos del inicio, días marcados; texto blanco). La barra
+  inferior de `Screen` es una píldora flotante; `BottomTabs` va dentro con la pestaña activa
+  resaltada. Recharts necesita hex: `ProgressChart` repite los colores sólidos equivalentes.
 - React Router 8 con **`createHashRouter`** (URLs `#/gym/...`). Así el mismo build sirve en
   Vercel, GitHub Pages o cualquier hosting estático sin reglas de redirección. `base: './'` en Vite.
 - IndexedDB con Dexie 4 + `dexie-react-hooks` (`useLiveQuery`), sincronizado con Supabase
@@ -300,7 +307,8 @@ que un módulo nuevo se sincroniza solo, sin código extra.
 2. En `data/schema.ts` define sus tablas con prefijo `<id>_`. Implementa `exportData`, `importData`
    (y `seed` si tiene datos iniciales) y añádelos en `data` del `ModuleDefinition`.
 3. En `index.ts` exporta el `ModuleDefinition` (`id`, `name`, `description`, `icon` de lucide,
-   `color` = `'bg-accent/15 text-accent'` (todas las tarjetas usan el acento morado), `path`, `routes`, `data`).
+   `color` = `'bg-accent/15 text-accent'` (hoy el inicio pinta todos los iconos con
+   `bg-accent-gradient` y no lo usa), `path`, `routes`, `data`).
 4. Añádelo al array de `src/modules/registry.ts`.
 5. Si ha añadido tablas, sube `DB_VERSION` en `src/core/db/setup.ts`.
 6. `npm run build` y prueba. El módulo aparece en el inicio y entra solo en la copia de seguridad.

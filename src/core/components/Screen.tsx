@@ -18,7 +18,7 @@ interface ScreenProps {
 export function Screen({ title, subtitle, backTo, actions, footer, children }: ScreenProps) {
   return (
     <div className="mx-auto flex h-full max-w-xl flex-col">
-      <header className="pt-safe sticky top-0 z-10 border-b border-border/60 bg-bg/90 backdrop-blur">
+      <header className="pt-safe sticky top-0 z-10 border-b border-white/[0.06] bg-bg/30 backdrop-blur-xl">
         <div className="flex h-14 items-center gap-1 px-2">
           {backTo !== undefined ? (
             <Link
@@ -42,8 +42,9 @@ export function Screen({ title, subtitle, backTo, actions, footer, children }: S
       <main className="flex-1 overflow-y-auto px-4 py-4">{children}</main>
 
       {footer && (
-        <footer className="pb-safe border-t border-border/60 bg-bg/95 px-4 pt-3 backdrop-blur">
-          {footer}
+        // Barra flotante de cristal (estética Aurora). BottomTabs ocupa todo el interior.
+        <footer className="pb-safe px-3 pt-2">
+          <div className="glass-panel rounded-3xl p-2 shadow-lg shadow-black/30">{footer}</div>
         </footer>
       )}
     </div>

@@ -20,9 +20,9 @@ export function Sheet({ open, title, onClose, children }: SheetProps) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="pb-safe relative w-full max-w-xl rounded-t-3xl border-t border-border bg-surface px-4 pt-3">
-        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-border" />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="glass-panel pb-safe relative w-full max-w-xl rounded-t-3xl border-x-0 border-b-0 px-4 pt-3">
+        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-white/25" />
         <h2 className="mb-4 text-lg font-semibold">{title}</h2>
         {children}
       </div>

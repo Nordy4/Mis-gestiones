@@ -28,10 +28,10 @@ interface Props {
   unit: string;
 }
 
-// Tokens de tema (ver src/index.css).
-const SURFACE = '#18181b';
-const GRID = '#27272a';
-const MUTED = '#a1a1aa';
+// Colores sólidos equivalentes a los tokens de tema (ver src/index.css; Recharts necesita hex).
+const SURFACE = '#22222a';
+const GRID = '#2c2c34';
+const MUTED = '#a6a6b2';
 
 function ChartTooltip({
   active,

@@ -11,7 +11,7 @@ export function HomeScreen() {
         <Link
           to="/ajustes"
           aria-label="Ajustes"
-          className="grid size-11 place-items-center rounded-full text-muted active:bg-surface-2"
+          className="grid size-11 place-items-center rounded-full border border-white/15 bg-white/10 text-text backdrop-blur active:bg-white/20"
         >
           <Settings className="size-5" />
         </Link>
@@ -24,9 +24,9 @@ export function HomeScreen() {
             <li key={m.id}>
               <Link
                 to={`/${m.path}`}
-                className="flex items-center gap-4 rounded-2xl border border-border/60 bg-surface p-4 active:bg-surface-2"
+                className="glass-card flex items-center gap-4 rounded-[22px] p-4 active:brightness-125"
               >
-                <span className={`grid size-14 shrink-0 place-items-center rounded-2xl ${m.color}`}>
+                <span className="bg-accent-gradient grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-lg shadow-accent-strong/40">
                   <Icon className="size-7" />
                 </span>
                 <span className="min-w-0 flex-1">
