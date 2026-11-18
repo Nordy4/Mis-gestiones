@@ -111,9 +111,27 @@ async function safeFetch(start: URL): Promise<{ res: Response; url: URL }> {
   throw new Error('too-many-redirects');
 }
 
+/**
+ * ¿Llama un usuario con sesión? Supabase ya ha verificado la firma del JWT (verify_jwt), pero
+ * también acepta la clave "anon" (pública): exigimos rol `authenticated` para que nadie use la
+ * función como proxy anónimo.
+ */
+function isSignedIn(req: Request): boolean {
+  const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? '';
+  const part = token.split('.')[1];
+  if (!part) return false;
+  try {
+    const payload = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
+    return payload?.role === 'authenticated' && typeof payload?.sub === 'string';
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
   if (req.method !== 'POST') return json(req, { error: 'Método no permitido' }, 405);
+  if (!isSignedIn(req)) return json(req, { error: 'Inicia sesión' }, 401);
 
   let target: URL;
   try {

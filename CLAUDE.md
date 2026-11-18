@@ -267,7 +267,9 @@ que un módulo nuevo se sincroniza solo, sin código extra.
   añádelo a `connect-src` en los dos sitios (si no, el navegador lo bloquea).
 - Validación en servidor: restricciones en `supabase/schema.sql`; Edge Functions con límites de
   tamaño, CORS solo para la app (`ALLOWED_ORIGINS` en link-preview) y errores genéricos.
-- `calendar-feed` va sin JWT a propósito (token privado en la URL); `link-preview` con JWT.
+- `calendar-feed` va sin JWT a propósito (token privado en la URL); `link-preview` y `route-ai` con
+  JWT **y** `isSignedIn` (rol `authenticated`): verify_jwt solo no basta, la clave anon legacy
+  también es un JWT válido. Toda Edge Function nueva que sea "solo con sesión" debe hacer lo mismo.
 - Hay conector MCP de Supabase: SQL con `apply_migration` (y refleja el cambio en
   `supabase/schema.sql`) y Edge Functions con `deploy_edge_function` (respeta `verify_jwt`).
   Tras cambios de BD, revisa `get_advisors` (security).

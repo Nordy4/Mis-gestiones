@@ -35,6 +35,14 @@ Además se encontraron y arreglaron tres problemas que no estaban en la lista:
   falsos en tu Google Calendar. Ahora se eliminan los caracteres de control.
 - **Fuga de errores internos** en `link-preview`: devolvía el mensaje técnico del fallo. Ahora no.
 
+Revisión posterior (al añadir `route-ai`):
+
+- **Clave anónima pública aceptada como "sesión":** la verificación JWT de Supabase también deja
+  pasar la clave `anon` legacy (es un JWT válido y está en cualquier cliente antiguo). Con ella
+  cualquiera podía usar `link-preview` como lector de páginas anónimo (probado: 200 con
+  `example.com`). Ahora `link-preview` y `route-ai` exigen además rol `authenticated` en el JWT
+  (`isSignedIn`): con la clave anon devuelven 401.
+
 ## Detalle de los arreglos
 
 **App (se publica al subir a GitHub)**
@@ -71,6 +79,7 @@ Además se encontraron y arreglaron tres problemas que no estaban en la lista:
 | Registro público / usuarios anónimos | ✅ Desactivados |
 | `calendar-feed` con token inválido (`../../etc`) o sin token | ✅ 404 |
 | `link-preview` sin sesión (intento a `169.254.169.254`) | ✅ 401 |
+| `link-preview` y `route-ai` con la clave anon legacy | ✅ 401 (antes del arreglo, `link-preview` daba 200) |
 | http://…github.io → https | ✅ 301 a https; HSTS presente |
 | CSP: script inyectado en la página | ✅ Bloqueado, no se ejecuta |
 | CSP: conexión a otro dominio (`example.com`) | ✅ Bloqueada; Supabase sí permitido |
