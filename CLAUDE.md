@@ -240,9 +240,13 @@ que un módulo nuevo se sincroniza solo, sin código extra.
   con el enlace puesto y el foco en el nombre (obligatorio). Acepta otros enlaces http(s) con aviso.
 - **Ruta con IA** (`/rutas/ia`, `AiRouteScreen`; rutas en `rutas/paths.ts`): salida, llegada o
   circular, duración en marcha y preferencias → Edge Function `supabase/functions/route-ai`
-  (verifica JWT, solo con sesión). Geocodifica con **OpenRouteService**, **Gemini** (con búsqueda de
-  Google) propone ≤ 8 paradas por secundarias con curvas, ORS calcula la duración real evitando
-  autopistas y, si se desvía > 20 %, Gemini corrige una vez. Devuelve un enlace
+  (verifica JWT **y** exige rol `authenticated`: la clave anon legacy también es un JWT válido).
+  Geocodifica con **OpenRouteService**, **Gemini** propone ≤ 8 paradas por secundarias con curvas
+  (le pasamos la ruta directa y los km objetivo: sola calcula mal las distancias), ORS calcula la
+  duración real evitando autopistas y, si se desvía > 20 %, Gemini corrige (hasta 2 veces).
+  Nivel gratuito de Gemini: la búsqueda de Google da 429 y los Flash suelen dar 503/tardar, así que
+  se prueba Flash con búsqueda → Flash sin búsqueda (20 s) → `gemini-flash-lite-latest` (el que
+  responde, ~2 s). En las pruebas: 10–35 s por ruta. Devuelve un enlace
   `google.com/maps/dir/?api=1` con las paradas en coordenadas (Google admite 9). Secretos en Supabase:
   `GEMINI_API_KEY`, `ORS_API_KEY` y opcional `GEMINI_MODEL` (por defecto `gemini-flash-latest`).
   Cliente: `data/aiRoute.ts`. La ruta solo se guarda si pulsas «Guardar ruta» (nombre + enlace).

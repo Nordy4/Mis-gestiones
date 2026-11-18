@@ -3,11 +3,12 @@
 // y un enlace de Google Maps que pasa por ellas. Solo con sesión (verificación JWT activada).
 //
 // 1. Geocodifica inicio y final con OpenRouteService (ORS).
-// 2. Gemini (con búsqueda de Google) propone paradas por carreteras secundarias asfaltadas y con
-//    curvas, evitando autopistas y autovías.
+// 2. Gemini propone paradas por carreteras secundarias asfaltadas y con curvas, evitando autopistas
+//    y autovías. Intenta con búsqueda de Google (no entra en el nivel gratuito) y, si no, sin ella o
+//    con el modelo de reserva Flash-Lite (los Flash del nivel gratuito suelen ir saturados).
 // 3. Cada parada se sitúa con el geocodificador de ORS (o las coordenadas de Gemini si no cuadra).
 // 4. ORS calcula la ruta real evitando autopistas: duración y distancia. Si se aleja más de un
-//    20 % de lo pedido, Gemini corrige las paradas una vez más.
+//    20 % de lo pedido, Gemini corrige las paradas (hasta 2 veces).
 //
 // Secretos (Supabase → Edge Functions → Secrets): GEMINI_API_KEY, ORS_API_KEY y, opcional,
 // GEMINI_MODEL (por defecto "gemini-flash-latest").
@@ -149,8 +150,10 @@ pistas de tierra ni caminos sin asfaltar. Evitas atravesar ciudades grandes.
 
 Devuelves las paradas intermedias (waypoints) en orden, que obliguen al navegador a ir por esas
 carreteras: pueblos, cruces o puertos situados SOBRE la carretera elegida. Pon más paradas donde haya
-varias opciones de carretera para que el GPS no se salga de la ruta. Usa la búsqueda para comprobar
-nombres y carreteras reales. Calcula a ritmo de moto tranquilo por secundarias (unos 50-60 km/h de media).
+varias opciones de carretera para que el GPS no se salga de la ruta. No repitas tramos: evita ir y
+volver por la misma carretera (en las circulares, vuelve por otro camino). Si puedes, usa la búsqueda
+para comprobar nombres y carreteras reales. Calcula a ritmo de moto tranquilo por secundarias (unos
+50-60 km/h de media).
 
 Responde SOLO con un objeto JSON, sin texto antes ni después, con esta forma:
 {"name": "nombre corto y evocador de la ruta",
@@ -162,31 +165,78 @@ que se usa para LLEGAR a esa parada. Entre 3 y ${MAX_WAYPOINTS} paradas.`;
 
 type GeminiContent = { role: 'user' | 'model'; parts: { text: string }[] };
 
-async function gemini(key: string, model: string, contents: GeminiContent[], timeoutMs: number): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    {
-      method: 'POST',
-      headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM }] },
-        contents,
-        tools: [{ google_search: {} }],
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
-    },
-  );
-  if (res.status === 429) throw new UserError('La IA ha llegado a su límite de uso. Prueba en un rato.');
-  if (!res.ok) {
-    console.error('gemini', res.status, (await res.text()).slice(0, 500));
-    throw new Error('gemini');
+/** Modelo de reserva: rápido y con cuota gratuita amplia (los Flash a veces van saturados). */
+const FALLBACK_MODEL = 'gemini-flash-lite-latest';
+
+async function geminiOnce(
+  key: string,
+  model: string,
+  search: boolean,
+  contents: GeminiContent[],
+  timeoutMs: number,
+): Promise<{ ok: true; text: string } | { ok: false; status: number }> {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: 'POST',
+        headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM }] },
+          contents,
+          ...(search ? { tools: [{ google_search: {} }] } : {}),
+        }),
+        signal: AbortSignal.timeout(timeoutMs),
+      },
+    );
+    if (!res.ok) {
+      console.error('gemini', model, search, res.status, (await res.text()).slice(0, 300));
+      return { ok: false, status: res.status };
+    }
+    const data = await res.json();
+    const parts: { text?: string; thought?: boolean }[] = data?.candidates?.[0]?.content?.parts ?? [];
+    const text = parts
+      .filter((p) => typeof p.text === 'string' && !p.thought)
+      .map((p) => p.text)
+      .join('');
+    return text ? { ok: true, text } : { ok: false, status: 0 };
+  } catch {
+    return { ok: false, status: 0 }; // tiempo agotado o red
   }
-  const data = await res.json();
-  const parts: { text?: string; thought?: boolean }[] = data?.candidates?.[0]?.content?.parts ?? [];
-  return parts
-    .filter((p) => typeof p.text === 'string' && !p.thought)
-    .map((p) => p.text)
-    .join('');
+}
+
+/**
+ * Pide el plan a Gemini probando en orden: modelo elegido con búsqueda de Google (en el nivel
+ * gratuito suele dar 429), el mismo sin búsqueda (con poco tiempo, por si va saturado) y el
+ * modelo de reserva.
+ */
+async function gemini(
+  key: string,
+  model: string,
+  contents: GeminiContent[],
+  deadline: number,
+  /** Opciones que ya fallaron en esta petición (la corrección no las repite). */
+  failed: Set<string>,
+): Promise<string> {
+  const steps: [string, boolean, number][] = [
+    [model, true, 30_000],
+    [model, false, 20_000],
+    [FALLBACK_MODEL, false, 40_000],
+  ];
+  let last = 0;
+  for (const [m, search, max] of steps) {
+    const id = `${m}|${search}`;
+    if (failed.has(id) && id !== `${FALLBACK_MODEL}|false`) continue;
+    const left = deadline - Date.now();
+    if (left < 5_000) break;
+    const r = await geminiOnce(key, m, search, contents, Math.min(max, left));
+    if (r.ok) return r.text;
+    failed.add(id);
+    last = r.status;
+    if (r.status === 400 || r.status === 401 || r.status === 403) break; // clave o petición mal
+  }
+  if (last === 429) throw new UserError('La IA ha llegado a su límite de uso. Prueba en un rato.');
+  throw new Error(`gemini ${last}`);
 }
 
 /** Extrae y valida el JSON de la respuesta de la IA. */
@@ -209,7 +259,7 @@ function parsePlan(text: string): AiPlan {
 }
 
 /** Sitúa cada parada: geocodificador si cuadra con lo que dijo la IA; si no, sus coordenadas. */
-async function locate(orsKey: string, plan: AiPlan, origin: Point): Promise<Stop[]> {
+async function locate(orsKey: string, plan: AiPlan, origin: Point, destination: Point): Promise<Stop[]> {
   const stops = await Promise.all(
     plan.waypoints.map(async (w): Promise<Stop | null> => {
       const ai = w.lat !== undefined && w.lng !== undefined ? { lat: w.lat, lng: w.lng } : null;
@@ -222,7 +272,17 @@ async function locate(orsKey: string, plan: AiPlan, origin: Point): Promise<Stop
       return { name: w.name, road: w.road, lat: p.lat, lng: p.lng };
     }),
   );
-  return stops.filter((s): s is Stop => s !== null);
+  // Quita paradas repetidas (a menos de 1 km de la anterior o de la salida): solo harían dar vueltas.
+  const out: Stop[] = [];
+  for (const s of stops) {
+    if (!s) continue;
+    const prev = out.at(-1) ?? origin;
+    if (km(prev, s) < 1) continue;
+    out.push(s);
+  }
+  // …y las del final que son la propia llegada (la IA a veces la repite como parada).
+  while (out.length && km(out[out.length - 1], destination) < 1) out.pop();
+  return out;
 }
 
 const fmt = (n: number) => n.toFixed(5);
@@ -240,9 +300,27 @@ function mapsUrl(start: Place, end: Place, stops: Stop[]): string {
 
 const hm = (min: number) => `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} min`;
 
+/**
+ * ¿Llama un usuario con sesión? Supabase ya ha verificado la firma del JWT (verify_jwt), pero
+ * también acepta la clave "anon" (pública): exigimos rol `authenticated` para no gastar la cuota
+ * de la IA con llamadas anónimas.
+ */
+function isSignedIn(req: Request): boolean {
+  const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? '';
+  const part = token.split('.')[1];
+  if (!part) return false;
+  try {
+    const payload = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
+    return payload?.role === 'authenticated' && typeof payload?.sub === 'string';
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
   if (req.method !== 'POST') return json(req, { error: 'Método no permitido' }, 405);
+  if (!isSignedIn(req)) return json(req, { error: 'Inicia sesión para usar la IA' }, 401);
   const began = Date.now();
 
   const geminiKey = Deno.env.get('GEMINI_API_KEY');
@@ -271,20 +349,30 @@ Deno.serve(async (req) => {
     const end = circular ? start : await geocode(orsKey, endText, start);
     if (!end) throw new UserError('No encuentro la dirección final.');
 
+    // Escala real para la IA (calcula mal las distancias): ruta directa y km aproximados por
+    // secundarias (en las pruebas, ~40 km/h de media según ORS).
+    const direct = circular ? null : await directions(orsKey, [start, end]).catch(() => null);
     const ask =
       `Diseña una ruta en moto ${circular ? 'CIRCULAR (vuelve al punto de salida)' : 'de ida'}.\n` +
       `Salida: ${startText} (${start.label}; ${fmt(start.lat)}, ${fmt(start.lng)}).\n` +
       (circular ? '' : `Llegada: ${endText} (${end.label}; ${fmt(end.lat)}, ${fmt(end.lng)}).\n`) +
-      `Duración deseada en marcha (sin paradas): ${hm(minutes)}.\n` +
+      `Duración deseada en marcha (sin paradas): ${hm(minutes)}, es decir, unos ${Math.round(minutes * 0.65)} km ` +
+      `en total por secundarias.\n` +
+      (direct
+        ? `Referencia: el camino más directo sin autopistas tarda ${hm(direct.minutes)} (${direct.km} km); ` +
+          `${direct.minutes >= minutes ? 'no hay margen para desvíos largos' : `tienes unos ${hm(minutes - direct.minutes)} para desviarte por carreteras mejores`}.\n`
+        : '') +
       (notes ? `Preferencias del motorista: ${notes}\n` : '');
 
     const contents: GeminiContent[] = [{ role: 'user', parts: [{ text: ask }] }];
+    const failed = new Set<string>();
     let best: { plan: AiPlan; stops: Stop[]; route: { minutes: number; km: number } | null } | null = null;
 
-    for (let attempt = 0; attempt < 2; attempt++) {
+    // Hasta 3 intentos (el primero + 2 correcciones), según el tiempo que quede.
+    for (let attempt = 0; attempt < 3; attempt++) {
       const left = TIME_BUDGET_MS - (Date.now() - began);
       if (left < 25_000) break;
-      const text = await gemini(geminiKey, model, contents, Math.min(70_000, left - 15_000));
+      const text = await gemini(geminiKey, model, contents, Date.now() + left - 15_000, failed);
       let plan: AiPlan;
       try {
         plan = parsePlan(text);
@@ -292,7 +380,7 @@ Deno.serve(async (req) => {
         if (best) break;
         throw new Error('bad-plan');
       }
-      const stops = await locate(orsKey, plan, start);
+      const stops = await locate(orsKey, plan, start, end);
       if (stops.length === 0) {
         if (best) break;
         throw new UserError('La IA no ha dado paradas válidas. Prueba otra vez.');
@@ -310,8 +398,9 @@ Deno.serve(async (req) => {
           {
             text:
               `Calculada la ruta real evitando autopistas, sale ${hm(route.minutes)} (${route.km} km) y ` +
-              `quiero unas ${hm(minutes)}. ${route.minutes > minutes ? 'Acórtala' : 'Alárgala'} manteniendo ` +
-              `carreteras con curvas. Devuelve el JSON completo otra vez.`,
+              `quiero unas ${hm(minutes)} (unos ${Math.round((route.km * minutes) / Math.max(route.minutes, 1))} km). ` +
+              `${route.minutes > minutes ? 'Acórtala quitando o acercando paradas' : 'Alárgala con un desvío por más carreteras con curvas'}` +
+              `, sin ir y volver por la misma carretera. Devuelve el JSON completo otra vez.`,
           },
         ],
       });
