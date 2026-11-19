@@ -185,7 +185,7 @@ que un módulo nuevo se sincroniza solo, sin código extra.
 - **Horario del usuario** (`lib/schedule.ts`): L–J 9:00–19:00 con 1 h de comida (9 h efectivas),
   V 9:00–15:00 sin comida (6 h); 42 h/semana. Al fichar, el primer tramo del día lleva la comida
   del horario y los siguientes 0. "Añadir horas" prerrellena entrada/salida/comida según el día.
-  La comida se puede cambiar en cada registro (No / 30 min / 1 h / 1 h 30 min). El total de hoy
+  La comida se puede cambiar en cada registro (No / 30 min / 1 h / 1 h 30 min / 2 h). El total de hoy
   muestra "de 9 h".
 - **Salida automática** (`lib/autoClose.ts`): una entrada sin salida en día laborable se cierra
   con la salida del horario (19:00 L–J, 15:00 V) a partir de las 22:00 de ese día, marcada

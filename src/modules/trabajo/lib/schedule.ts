@@ -20,7 +20,7 @@ const FRIDAY: DaySchedule = { start: '09:00', end: '15:00', breakMinutes: 0, exp
 const WEEKEND: DaySchedule = { start: '09:00', end: '15:00', breakMinutes: 0, expectedMinutes: 0 };
 
 /** Opciones de comida que se pueden elegir en un registro. */
-export const BREAK_OPTIONS = [0, 30, 60, 90];
+export const BREAK_OPTIONS = [0, 30, 60, 90, 120];
 
 /** Horario de un día (YYYY-MM-DD). */
 export function scheduleFor(date: string): DaySchedule {
