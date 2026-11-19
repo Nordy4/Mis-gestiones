@@ -64,7 +64,7 @@ export function ShiftSheet({ open, shift, defaultDate, onSubmit, onDelete, onClo
   const nextDay = range?.endAt && dayOf(range.endAt) !== date;
 
   const chip = (active: boolean) =>
-    `h-10 flex-1 rounded-lg text-sm font-semibold ${active ? 'bg-surface text-text' : 'text-muted'}`;
+    `h-10 flex-1 whitespace-nowrap rounded-lg px-1 text-sm font-semibold ${active ? 'bg-surface text-text' : 'text-muted'}`;
 
   return (
     <Sheet open={open} title={shift ? 'Editar registro' : 'Añadir horas'} onClose={onClose}>
