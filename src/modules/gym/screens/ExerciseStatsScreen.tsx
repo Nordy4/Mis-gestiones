@@ -41,6 +41,8 @@ export function ExerciseStatsScreen() {
   const { exerciseId } = useParams();
   const exercise = useExercise(exerciseId);
   const routine = useRoutine(exercise?.routineId);
+  // Si es una variante, su ejercicio principal (para el subtítulo).
+  const parent = useExercise(exercise?.parentId ?? undefined);
   const history = useWeightHistory(exerciseId);
 
   const { people, rows, series } = useMemo(() => {
@@ -55,7 +57,11 @@ export function ExerciseStatsScreen() {
   if (!exercise || !history) return null;
 
   return (
-    <Screen title={exercise.name} subtitle={routine?.name} backTo={gymPaths.routine(exercise.routineId)}>
+    <Screen
+      title={exercise.name}
+      subtitle={parent ? `Variante de ${parent.name} · ${routine?.name ?? ''}` : routine?.name}
+      backTo={gymPaths.routine(exercise.routineId)}
+    >
       {people.length === 0 ? (
         <EmptyState icon={ChartLine} title="Sin pesos todavía">
           Ajusta el peso de este ejercicio en la rutina y aquí verás cómo evoluciona.

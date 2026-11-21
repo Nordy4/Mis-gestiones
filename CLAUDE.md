@@ -144,6 +144,23 @@ que un módulo nuevo se sincroniza solo, sin código extra.
   pareja a la derecha; debajo "● 45 kg · 13 nov" / "● sin registro" (último registro de cada uno,
   enlaza a la evolución) y papelera. Filas separadas por líneas, sin tarjetas. Tocar el nombre
   abre el formulario de edición.
+- **Variantes** (p. ej. "Press banca" → "Con mancuernas"): son filas de `gym_exercises` con
+  `parentId` = id del ejercicio principal (misma rutina y sección; sin índice ni cambio de esquema).
+  Tienen todos los campos de un ejercicio y **su propio historial** en `gym_weight_log`.
+  `listExercises` devuelve solo los principales; `listVariants` / `addVariant` / `variantCounts`
+  las variantes. En la fila (`components/ExerciseRow`, diseño pedido por el usuario):
+  - **Flecha junto al nombre** (solo si hay variantes): desplegable (`VariantMenu`, no un Sheet)
+    justo debajo de la flecha con los nombres; tocar uno la elige (`selectVariant`). Se cierra al
+    tocar fuera o con Escape; si no cabe a la derecha se alinea a la derecha de la flecha.
+  - **Icono capas (Layers) junto a la papelera**: abre `VariantsSheet` para gestionar la lista
+    (solo nombres): añadir (`addVariant(parentId, name)`: series/reps del principal, sin pesos),
+    renombrar (`renameExercise`) y borrar.
+  - **Los pesos de la variante se escriben solo en la fila de la rutina.** Borrar el ejercicio
+    principal archiva también sus variantes.
+  **Con variantes, el ejercicio por sí solo no es real**: no tiene pesos (ni en la fila ni en su
+  formulario, `hideWeights`); la fila usa siempre una variante: la elegida (`selectedVariantId`)
+  o, si no hay o se borró, la primera. Su nombre va en gris **debajo** del nombre del ejercicio. Si se borran todas las
+  variantes, el ejercicio vuelve a mostrar sus pesos de antes.
 - **Dos personas**: `Person = 'me' | 'partner'`. En la UI se llaman **Goyo** (me) y **Bebe** (partner): usar siempre `PERSON_LABEL`, nunca "Yo"/"Pareja" a mano. Colores: **morado
   `--color-me` #9d7bf5 (yo)** y **azul pastel `--color-partner` #8ccbf7 (pareja)**, elegidos por el
   usuario; `PERSON_COLOR` repite los valores para Recharts. Siempre con su nombre al lado

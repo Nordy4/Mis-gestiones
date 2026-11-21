@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { Dumbbell, FolderPlus, Pencil, Play, Plus, Timer, Trash2 } from 'lucide-react';
 import { Screen } from '@/core/components/Screen';
 import { Button, IconButton } from '@/core/components/Button';
@@ -7,11 +7,10 @@ import { ConfirmSheet } from '@/core/components/Sheet';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NotFoundScreen } from '@/core/components/NotFoundScreen';
 import { useNow } from '@/core/lib/useNow';
-import { formatDateShort, formatKg } from '@/core/lib/format';
-import { gymRepo, useActiveWorkout, useExercises, useRoutine, useSections, useWeightHistory } from '../data/hooks';
-import { PERSON_LABEL, type Exercise, type Person, type Section, type WeightLogEntry } from '../data/types';
-import { PersonDot } from '../components/PersonWeights';
-import { WeightInput } from '../components/WeightInput';
+import { gymRepo, useActiveWorkout, useExercises, useRoutine, useSections, useVariantCounts } from '../data/hooks';
+import type { Exercise, Section } from '../data/types';
+import { ExerciseRow } from '../components/ExerciseRow';
+import { VariantsSheet } from '../components/VariantsSheet';
 import { ExerciseFormSheet } from '../components/ExerciseFormSheet';
 import { RoutineNameSheet } from '../components/RoutineNameSheet';
 import { SectionSheet } from '../components/SectionSheet';
@@ -19,89 +18,13 @@ import { groupBySection } from '../lib/grouping';
 import { elapsedSeconds, formatClock } from '../lib/timer';
 import { gymPaths } from '../paths';
 
-/** Último peso registrado de una persona en el historial (con su fecha). */
-function lastRecord(history: WeightLogEntry[], person: Person) {
-  for (let i = history.length - 1; i >= 0; i--) {
-    const w = person === 'me' ? history[i].weight : history[i].partnerWeight;
-    if (w != null) return { weight: w, date: history[i].date };
-  }
-  return null;
-}
-
-interface ExerciseRowProps {
-  exercise: Exercise;
-  onEdit: () => void;
-  onDelete: () => void;
-}
-
-/**
- * Fila de ejercicio: nombre + pesos subrayados (yo morado, pareja azul pastel) y debajo el
- * último registro de cada uno. Tocar el nombre edita; tocar los registros abre la evolución.
- */
-function ExerciseRow({ exercise, onEdit, onDelete }: ExerciseRowProps) {
-  const history = useWeightHistory(exercise.id);
-  const save = (weight: number | null, partnerWeight: number | null) =>
-    gymRepo.setWeights(exercise.id, weight, partnerWeight);
-
-  const record = (person: Person) => {
-    const r = history ? lastRecord(history, person) : null;
-    return (
-      <span className="flex min-w-0 items-center gap-1.5">
-        <PersonDot person={person} />
-        <span className="sr-only">{PERSON_LABEL[person]}:</span>
-        <span className="truncate">
-          {history === undefined ? '…' : r ? `${formatKg(r.weight)} kg · ${formatDateShort(r.date)}` : 'sin registro'}
-        </span>
-      </span>
-    );
-  };
-
-  return (
-    <li className="py-3">
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="line-clamp-2 min-w-0 flex-1 text-left text-lg leading-tight font-semibold active:opacity-70"
-        >
-          {exercise.name}
-        </button>
-        <WeightInput
-          person="me"
-          exerciseName={exercise.name}
-          value={exercise.weight ?? null}
-          onChange={(v) => save(v, exercise.partnerWeight ?? null)}
-        />
-        <WeightInput
-          person="partner"
-          exerciseName={exercise.name}
-          value={exercise.partnerWeight ?? null}
-          onChange={(v) => save(exercise.weight ?? null, v)}
-        />
-      </div>
-      <div className="mt-1 flex items-center gap-2 text-sm text-muted">
-        <Link
-          to={gymPaths.exercise(exercise.id)}
-          aria-label={`Evolución de ${exercise.name}`}
-          className="flex min-w-0 flex-1 items-center gap-4 py-1 active:opacity-70"
-        >
-          {record('me')}
-          {record('partner')}
-        </Link>
-        <IconButton label={`Borrar ${exercise.name}`} onClick={onDelete} className="-my-2 -mr-2">
-          <Trash2 className="size-4" />
-        </IconButton>
-      </div>
-    </li>
-  );
-}
-
 export function RoutineScreen() {
   const { routineId } = useParams();
   const navigate = useNavigate();
   const routine = useRoutine(routineId);
   const sections = useSections(routineId);
   const exercises = useExercises(routineId);
+  const variantCounts = useVariantCounts(routineId);
   const active = useActiveWorkout();
   const activeRoutine = useRoutine(active?.routineId);
   const now = useNow(!!active && !active.pausedAt);
@@ -112,6 +35,7 @@ export function RoutineScreen() {
   const [addingIn, setAddingIn] = useState<string | null | undefined>(undefined);
   const [editing, setEditing] = useState<Exercise | null>(null);
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
+  const [variantsOfId, setVariantsOfId] = useState<string | null>(null);
   const [creatingSection, setCreatingSection] = useState(false);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [deletingSection, setDeletingSection] = useState<Section | null>(null);
@@ -120,6 +44,8 @@ export function RoutineScreen() {
   if (!routine || !exercises || !sections || active === undefined) return null;
 
   const groups = groupBySection(exercises, sections);
+  // Se busca en la lista viva para que el panel muestre el nombre actualizado (y se cierre si se borra).
+  const variantsOf = exercises.find((e) => e.id === variantsOfId) ?? null;
   const editingSectionIndex = sections.findIndex((s) => s.id === editingSectionId);
   const editingSection = editingSectionIndex >= 0 ? sections[editingSectionIndex] : null;
   // Posición del ejercicio en edición dentro de su grupo (para Subir / Bajar).
@@ -196,6 +122,8 @@ export function RoutineScreen() {
                   exercise={ex}
                   onEdit={() => setEditing(ex)}
                   onDelete={() => setDeletingExercise(ex)}
+                  onManageVariants={() => setVariantsOfId(ex.id)}
+                  variantCount={variantCounts?.[ex.id] ?? 0}
                 />
               ))}
             </ul>
@@ -274,6 +202,7 @@ export function RoutineScreen() {
       <ExerciseFormSheet
         open={editing !== null}
         exercise={editing}
+        hideWeights={!!editing && (variantCounts?.[editing.id] ?? 0) > 0}
         sections={sections}
         canMoveUp={editingIndex > 0}
         canMoveDown={!!editingGroup && editingIndex >= 0 && editingIndex < editingGroup.exercises.length - 1}
@@ -288,12 +217,18 @@ export function RoutineScreen() {
       <ConfirmSheet
         open={deletingExercise !== null}
         title={`¿Borrar "${deletingExercise?.name ?? ''}"?`}
-        message="Se quitará de la rutina. Su historial de pesos se conserva en la copia de seguridad."
+        message={
+          variantCounts?.[deletingExercise?.id ?? '']
+            ? 'Se quitará de la rutina junto con sus variantes. Su historial de pesos se conserva en la copia de seguridad.'
+            : 'Se quitará de la rutina. Su historial de pesos se conserva en la copia de seguridad.'
+        }
         confirmLabel="Borrar"
         danger
         onConfirm={() => deletingExercise && gymRepo.archiveExercise(deletingExercise.id)}
         onClose={() => setDeletingExercise(null)}
       />
+      {/* key: se monta de nuevo por ejercicio para no enseñar un instante las variantes del anterior. */}
+      <VariantsSheet key={variantsOf?.id ?? 'none'} exercise={variantsOf} onClose={() => setVariantsOfId(null)} />
     </Screen>
   );
 }

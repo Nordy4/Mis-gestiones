@@ -34,15 +34,33 @@ export interface GymRepository {
   archiveSection(id: string): Promise<void>;
 
   // Ejercicios y pesos
+  /** Ejercicios principales de la rutina (sin las variantes). */
   listExercises(routineId: string): Promise<Exercise[]>;
+  /** Variantes activas de un ejercicio, por `order`. */
+  listVariants(parentId: string): Promise<Exercise[]>;
+  /** Número de variantes activas de cada ejercicio principal de la rutina. */
+  variantCounts(routineId: string): Promise<Record<string, number>>;
   getExercise(id: string): Promise<Exercise | undefined>;
   addExercise(routineId: string, input: ExerciseInput): Promise<Exercise>;
+  /**
+   * Añade una variante al ejercicio `parentId` con solo su nombre (misma rutina y sección,
+   * series/reps del principal y sin pesos: se ponen después en la fila de la rutina).
+   */
+  addVariant(parentId: string, name: string): Promise<Exercise>;
+  /** Cambia solo el nombre (p. ej. de una variante). */
+  renameExercise(id: string, name: string): Promise<void>;
+  /** Elige la variante que muestra el ejercicio en la rutina (null = el propio ejercicio). */
+  selectVariant(parentId: string, variantId: string | null): Promise<void>;
   /** Actualiza el ejercicio; si cambian los pesos, los apunta en el historial de hoy. */
   updateExercise(id: string, input: ExerciseInput): Promise<void>;
   /** Cambia solo los pesos actuales y los apunta en el historial de hoy. */
   setWeights(id: string, weight: number | null, partnerWeight: number | null): Promise<void>;
+  /** Borra (archiva) el ejercicio y, si es principal, también sus variantes. */
   archiveExercise(id: string): Promise<void>;
-  /** Mueve el ejercicio una posición arriba (-1) o abajo (+1) dentro de su sección. */
+  /**
+   * Mueve el ejercicio una posición arriba (-1) o abajo (+1) dentro de su sección
+   * (o, si es una variante, entre las variantes del mismo ejercicio).
+   */
   moveExercise(id: string, direction: -1 | 1): Promise<void>;
   /** Historial de pesos de un ejercicio, del más antiguo al más reciente. */
   weightHistory(exerciseId: string): Promise<WeightLogEntry[]>;

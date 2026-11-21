@@ -3,7 +3,7 @@ import { db } from '@/core/db/db';
 import { newId, nowIso } from '@/core/lib/ids';
 import { todayKey } from '@/core/lib/format';
 import type { GymRepository } from './repository';
-import type { Exercise, Routine, Section, WeightLogEntry, Workout } from './types';
+import type { Exercise, ExerciseInput, Routine, Section, WeightLogEntry, Workout } from './types';
 import { normalizeGymData, type AnyGymData, type LegacySet } from './normalize';
 import { elapsedSeconds } from '../lib/timer';
 import { seedRoutines } from './seed';
@@ -38,6 +38,41 @@ async function logWeights(exerciseId: string, weight: number | null, partnerWeig
 }
 
 const findActive = () => workouts().filter((w) => w.finishedAt === null).first();
+
+/** Todos los ejercicios de la rutina (principales y variantes, también archivados) por `order`. */
+const routineExercises = (routineId: string) =>
+  exercises()
+    .where('[routineId+order]')
+    .between([routineId, Dexie.minKey], [routineId, Dexie.maxKey])
+    .toArray();
+
+/** Crea un ejercicio principal (`parentId` null) o una variante y apunta sus pesos iniciales. */
+async function insertExercise(routineId: string, parentId: string | null, input: ExerciseInput) {
+  return db.transaction('rw', exercises(), weightLog(), async () => {
+    const existing = await exercises().where('routineId').equals(routineId).toArray();
+    const now = nowIso();
+    const exercise: Exercise = {
+      id: newId(),
+      routineId,
+      sectionId: input.sectionId,
+      parentId,
+      name: cleanName(input.name),
+      targetSets: input.targetSets,
+      targetReps: input.targetReps,
+      weight: input.weight,
+      partnerWeight: input.partnerWeight,
+      order: existing.reduce((m, e) => Math.max(m, e.order), -1) + 1,
+      createdAt: now,
+      updatedAt: now,
+      archivedAt: null,
+    };
+    await exercises().add(exercise);
+    if (input.weight !== null || input.partnerWeight !== null) {
+      await logWeights(exercise.id, input.weight, input.partnerWeight);
+    }
+    return exercise;
+  });
+}
 
 export const dexieGymRepository: GymRepository = {
   // ---------- Rutinas ----------
@@ -125,45 +160,57 @@ export const dexieGymRepository: GymRepository = {
 
   // ---------- Ejercicios y pesos ----------
   async listExercises(routineId) {
-    const all = await exercises()
-      .where('[routineId+order]')
-      .between([routineId, Dexie.minKey], [routineId, Dexie.maxKey])
-      .toArray();
-    return all.filter(isActive);
+    const all = await routineExercises(routineId);
+    return all.filter((e) => isActive(e) && !e.parentId);
+  },
+
+  async listVariants(parentId) {
+    const parent = await exercises().get(parentId);
+    if (!parent) return [];
+    const all = await routineExercises(parent.routineId);
+    return all.filter((e) => isActive(e) && e.parentId === parentId);
+  },
+
+  async variantCounts(routineId) {
+    const counts: Record<string, number> = {};
+    for (const e of await routineExercises(routineId)) {
+      if (e.parentId && isActive(e)) counts[e.parentId] = (counts[e.parentId] ?? 0) + 1;
+    }
+    return counts;
   },
 
   getExercise: (id) => exercises().get(id),
 
-  async addExercise(routineId, input) {
-    return db.transaction('rw', exercises(), weightLog(), async () => {
-      const existing = await exercises().where('routineId').equals(routineId).toArray();
-      const now = nowIso();
-      const exercise: Exercise = {
-        id: newId(),
-        routineId,
-        sectionId: input.sectionId,
-        name: cleanName(input.name),
-        targetSets: input.targetSets,
-        targetReps: input.targetReps,
-        weight: input.weight,
-        partnerWeight: input.partnerWeight,
-        order: existing.reduce((m, e) => Math.max(m, e.order), -1) + 1,
-        createdAt: now,
-        updatedAt: now,
-        archivedAt: null,
-      };
-      await exercises().add(exercise);
-      if (input.weight !== null || input.partnerWeight !== null) {
-        await logWeights(exercise.id, input.weight, input.partnerWeight);
-      }
-      return exercise;
+  addExercise: (routineId, input) => insertExercise(routineId, null, input),
+
+  async addVariant(parentId, name) {
+    const parent = await exercises().get(parentId);
+    if (!parent) throw new Error('Ejercicio no encontrado');
+    // La variante vive en la misma sección que su ejercicio principal; los pesos van luego en la fila.
+    return insertExercise(parent.routineId, parentId, {
+      name,
+      sectionId: parent.sectionId ?? null,
+      targetSets: parent.targetSets,
+      targetReps: parent.targetReps,
+      weight: null,
+      partnerWeight: null,
     });
+  },
+
+  async renameExercise(id, name) {
+    await exercises().update(id, { name: cleanName(name), updatedAt: nowIso() });
+  },
+
+  async selectVariant(parentId, variantId) {
+    await exercises().update(parentId, { selectedVariantId: variantId, updatedAt: nowIso() });
   },
 
   async updateExercise(id, input) {
     await db.transaction('rw', exercises(), weightLog(), async () => {
       const prev = await exercises().get(id);
-      await exercises().update(id, { ...input, name: cleanName(input.name), updatedAt: nowIso() });
+      // Una variante no elige sección: sigue la del ejercicio principal.
+      const sectionId = prev?.parentId ? (prev.sectionId ?? null) : input.sectionId;
+      await exercises().update(id, { ...input, sectionId, name: cleanName(input.name), updatedAt: nowIso() });
       if (prev && (prev.weight !== input.weight || prev.partnerWeight !== input.partnerWeight)) {
         await logWeights(id, input.weight, input.partnerWeight);
       }
@@ -179,7 +226,24 @@ export const dexieGymRepository: GymRepository = {
 
   async archiveExercise(id) {
     const now = nowIso();
-    await exercises().update(id, { archivedAt: now, updatedAt: now });
+    await db.transaction('rw', exercises(), async () => {
+      const ex = await exercises().get(id);
+      if (!ex) return;
+      await exercises().update(id, { archivedAt: now, updatedAt: now });
+      // Si era la variante elegida, el ejercicio principal vuelve a mostrarse a sí mismo.
+      if (ex.parentId) {
+        const parent = await exercises().get(ex.parentId);
+        if (parent?.selectedVariantId === id) {
+          await exercises().update(parent.id, { selectedVariantId: null, updatedAt: now });
+        }
+      }
+      // Sus variantes se van con él (el historial de pesos se conserva).
+      await exercises()
+        .where('routineId')
+        .equals(ex.routineId)
+        .filter((e) => e.parentId === id && isActive(e))
+        .modify({ archivedAt: now, updatedAt: now });
+    });
   },
 
   async moveExercise(id, direction) {
@@ -187,8 +251,10 @@ export const dexieGymRepository: GymRepository = {
       const ex = await exercises().get(id);
       if (!ex) return;
       // Misma agrupación que la pantalla: sección inexistente o borrada = sin sección.
+      // Las variantes se ordenan solo entre las de su mismo ejercicio principal.
       const live = new Set((await activeSections(ex.routineId)).map((s) => s.id));
-      const groupOf = (e: Exercise) => (e.sectionId && live.has(e.sectionId) ? e.sectionId : null);
+      const groupOf = (e: Exercise) =>
+        e.parentId ? `v:${e.parentId}` : e.sectionId && live.has(e.sectionId) ? e.sectionId : null;
       const all = await exercises().where('routineId').equals(ex.routineId).toArray();
       const group = all
         .filter((e) => isActive(e) && groupOf(e) === groupOf(ex))

@@ -29,6 +29,17 @@ export const useSections = (routineId: string | undefined) =>
 export const useExercises = (routineId: string | undefined) =>
   useLiveQuery(() => (routineId ? gymRepo.listExercises(routineId) : []), [routineId]);
 
+/** Variantes activas de un ejercicio. */
+export const useVariants = (parentId: string | undefined) =>
+  useLiveQuery(() => (parentId ? gymRepo.listVariants(parentId) : []), [parentId]);
+
+/** Número de variantes de cada ejercicio principal de la rutina (por id). */
+export const useVariantCounts = (routineId: string | undefined) =>
+  useLiveQuery(
+    async (): Promise<Record<string, number>> => (routineId ? gymRepo.variantCounts(routineId) : {}),
+    [routineId],
+  );
+
 export const useExercise = (id: string | undefined) =>
   useLiveQuery(async () => (id ? ((await gymRepo.getExercise(id)) ?? null) : null), [id]);
 

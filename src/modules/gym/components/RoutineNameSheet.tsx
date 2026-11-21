@@ -10,9 +10,19 @@ interface Props {
   submitLabel: string;
   onSubmit: (name: string) => void | Promise<void>;
   onClose: () => void;
+  placeholder?: string;
 }
 
-export function RoutineNameSheet({ open, title, initialName = '', submitLabel, onSubmit, onClose }: Props) {
+/** Panel con un solo campo de nombre (rutinas, variantes). */
+export function RoutineNameSheet({
+  open,
+  title,
+  initialName = '',
+  submitLabel,
+  onSubmit,
+  onClose,
+  placeholder = 'p. ej. Hombro & Core',
+}: Props) {
   const [name, setName] = useState(initialName);
 
   useEffect(() => {
@@ -35,7 +45,7 @@ export function RoutineNameSheet({ open, title, initialName = '', submitLabel, o
           label="Nombre"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="p. ej. Hombro & Core"
+          placeholder={placeholder}
           autoFocus
           maxLength={60}
         />

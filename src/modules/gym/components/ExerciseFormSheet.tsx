@@ -28,6 +28,8 @@ interface Props {
   onMove?: (direction: -1 | 1) => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  /** Ejercicio con variantes: no tiene pesos propios, así que no se muestran. */
+  hideWeights?: boolean;
   onClose: () => void;
 }
 
@@ -41,6 +43,7 @@ export function ExerciseFormSheet({
   onMove,
   canMoveUp,
   canMoveDown,
+  hideWeights = false,
   onClose,
 }: Props) {
   const [name, setName] = useState('');
@@ -114,7 +117,7 @@ export function ExerciseFormSheet({
           <Stepper label="Series" value={sets} onChange={setSets} step={1} min={1} />
           <Stepper label="Reps" value={reps} onChange={setReps} step={1} min={1} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className={hideWeights ? 'hidden' : 'grid grid-cols-2 gap-3'}>
           {(
             [
               ['me', weight, setWeight],

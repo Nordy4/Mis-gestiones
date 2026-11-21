@@ -24,6 +24,17 @@ export interface Exercise extends Entity {
   routineId: string;
   /** Sección a la que pertenece; null/ausente = sin sección (se muestra arriba). */
   sectionId?: string | null;
+  /**
+   * Si tiene valor, es una **variante** de ese ejercicio: misma rutina, mismos campos y su propio
+   * historial de pesos (gym_weight_log por su id). No sale en la lista de la rutina, sino en el
+   * panel de variantes del ejercicio principal. null/ausente = ejercicio principal.
+   */
+  parentId?: string | null;
+  /**
+   * Solo en ejercicios principales: variante elegida. La fila de la rutina muestra su nombre (en
+   * gris) y sus pesos, y los cambios de peso se apuntan en ella. null/ausente = el propio ejercicio.
+   */
+  selectedVariantId?: string | null;
   name: string;
   targetSets: number;
   targetReps: number;
