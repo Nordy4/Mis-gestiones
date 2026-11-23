@@ -214,7 +214,8 @@ que un módulo nuevo se sincroniza solo, sin código extra.
   cuentan días con registros (sin registro = vacaciones/festivo, no resta), ni futuros ni con un
   tramo abierto (no resta la jornada a media mañana). Fin de semana: jornada 0, todo suma. La
   tarjeta "Horas extra" (sustituye al total semanal) muestra el saldo total (morado si +, rojo
-  si −) y el de esta semana.
+  si −) y el de esta semana. Se guarda en minutos y se muestra en **días + horas**
+  (`formatBalance`: cada 9 h = 1 día, p. ej. "+2 d 3 h 30 min"; petición del usuario).
 - Registros sin `breakMinutes` (anteriores a la v6 de la BD o copias antiguas) se completan con
   `data/normalize.ts` (migración `upgradeTrabajoData` y al importar). Si la salida es ≤ entrada se guarda al día siguiente (turno de noche) y cuenta
   en el día de entrada.

@@ -28,8 +28,18 @@ export function balanceMinutes(shifts: Shift[], today: string, from?: string): n
   return total;
 }
 
-/** 90 → "+1 h 30 min" · −45 → "−45 min" · 0 → "0 h" */
+/** Un día de horas extra = una jornada de L–J (9 h). */
+export const BALANCE_DAY_MINUTES = 9 * 60;
+
+/**
+ * Saldo en días + horas (cada 9 h = 1 día):
+ * 90 → "+1 h 30 min" · 600 → "+1 d 1 h" · 1080 → "+2 d" · −45 → "−45 min" · 0 → "0 h"
+ */
 export function formatBalance(minutes: number): string {
   if (minutes === 0) return '0 h';
-  return `${minutes > 0 ? '+' : '−'}${formatHM(Math.abs(minutes))}`;
+  const abs = Math.abs(minutes);
+  const days = Math.floor(abs / BALANCE_DAY_MINUTES);
+  const rest = abs % BALANCE_DAY_MINUTES;
+  const parts = [days ? `${days} d` : '', rest || !days ? formatHM(rest) : ''].filter(Boolean);
+  return `${minutes > 0 ? '+' : '−'}${parts.join(' ')}`;
 }
